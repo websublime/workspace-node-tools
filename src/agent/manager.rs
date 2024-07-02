@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Agent {
@@ -33,12 +33,25 @@ impl Agent {
         None
     }
 
-    pub fn to_string(&self) -> String {
-        match self {
+    /*pub fn to_string(&self) -> String {
+    match self {
+        Agent::Npm => "npm".to_string(),
+        Agent::Yarn => "yarn".to_string(),
+        Agent::Pnpm => "pnpm".to_string(),
+        Agent::Bun => "bun".to_string(),
+    }
+    }*/
+}
+
+impl Display for Agent {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        let agent = match self {
             Agent::Npm => "npm".to_string(),
             Agent::Yarn => "yarn".to_string(),
             Agent::Pnpm => "pnpm".to_string(),
             Agent::Bun => "bun".to_string(),
-        }
+        };
+
+        write!(f, "{}", agent)
     }
 }

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[napi(string_enum)]
+#[derive(Debug, PartialEq)]
 pub enum Agent {
     Npm,
     Yarn,
@@ -32,15 +33,6 @@ impl Agent {
 
         None
     }
-
-    /*pub fn to_string(&self) -> String {
-    match self {
-        Agent::Npm => "npm".to_string(),
-        Agent::Yarn => "yarn".to_string(),
-        Agent::Pnpm => "pnpm".to_string(),
-        Agent::Bun => "bun".to_string(),
-    }
-    }*/
 }
 
 impl Display for Agent {
@@ -131,5 +123,14 @@ mod tests {
         let agent = Agent::detect(&path);
 
         assert_eq!(agent, None);
+    }
+
+    #[test]
+    #[should_panic]
+    fn agent_empty_display_should_panic() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let agent = Agent::detect(&path);
+
+        assert_eq!(agent.unwrap().to_string(), String::from(""));
     }
 }

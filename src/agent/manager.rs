@@ -55,3 +55,18 @@ impl Display for Agent {
         write!(f, "{}", agent)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn agent_not_present() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let agent = Agent::detect(&path);
+
+        dbg!(path);
+
+        assert_eq!(agent, None);
+    }
+}

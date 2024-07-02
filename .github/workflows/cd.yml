@@ -108,7 +108,7 @@ jobs:
             target/${{ matrix.job.target }}/release/workspace-node-tools-*.tar.gz
             target/${{ matrix.job.target }}/release/workspace-node-tools-*.sha256
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
   publish-cargo:
     name: Publishing to Cargo

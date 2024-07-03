@@ -11,9 +11,27 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Create pnpm-lock.yaml
+        run: |
+          echo "node-version: 20" > pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          #cache: 'pnpm'
+      - name: Delete pnpm-lock.yaml
+        run: |
+          rm -f pnpm-lock.yaml
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2

@@ -5,11 +5,7 @@ use std::{env, path};
 
 pub fn get_project_root_path() -> Option<String> {
 	let current_dir = env::current_dir().unwrap();
-
-	let dir = match walk_reverse_dir(current_dir.as_path()) {
-		Some(path) => path,
-		None => String::new(),
-	};
+	let dir = walk_reverse_dir(current_dir.as_path()).unwrap_or_default();
 
 	Some(dir)
 }

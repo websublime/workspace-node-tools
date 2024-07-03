@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2024-07-03
+
+### 🚀 Features
+
+- Project root detection
+
+### 🐛 Bug Fixes
+
+- Clippy checks
+- Fmt formatting rules
+
+### 🧪 Testing
+
+- Add tests for filesystem root detection
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Disable clippy checks
+- Simplify match to unwrap_or_default
+- Merge pull request #4 from websublime/feature/filesystem
+- Bump to version 0.3.0
+
 ## [0.2.0] - 2024-07-03
 
 ### 🚀 Features

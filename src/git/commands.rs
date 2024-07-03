@@ -1,5 +1,4 @@
-#[allow(clippy::all)]
-
+#![allow(clippy::all)]
 use execute::Execute;
 use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;

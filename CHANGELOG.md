@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2024-07-03
+
+### 🚀 Features
+
+- Monorepo struct api
+- Package info struct with json value and tests to monorepo npm,pnpm
+- Action CI to support pnpm
+
+### 🐛 Bug Fixes
+
+- Clippy issues
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Maintenance format
+- Maintenance clippy suggestions
+- Pnpm-lock.yaml
+- Github action pnpm-lock creation and deletion
+- Node without cache
+- Merge pull request #5 from websublime/feature/monorepo
+- Bump to version 0.4.0
+
 ## [0.3.0] - 2024-07-03
 
 ### 🚀 Features

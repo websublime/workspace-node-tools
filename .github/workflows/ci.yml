@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Create pnpm-lock.yaml
+        run: |
+          echo "node-version: 20" > pnpm-lock.yaml
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -26,6 +29,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
+      - name: Delete pnpm-lock.yaml
+        run: |
+          rm -f pnpm-lock.yaml
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2

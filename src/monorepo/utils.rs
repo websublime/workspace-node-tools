@@ -1,3 +1,5 @@
+#![allow(clippy::option_map_or_none)]
+
 use regex::Regex;
 
 #[derive(Debug)]

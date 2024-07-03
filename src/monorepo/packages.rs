@@ -1,5 +1,6 @@
 #![warn(dead_code)]
 #![allow(clippy::needless_borrow)]
+#![allow(clippy::unused_io_amount)]
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -139,10 +140,8 @@ impl Monorepo {
                     )) {
                         let package_json = std::fs::read_to_string(entry.path()).unwrap();
                         let pkg_json = PackageJson::try_from(package_json).unwrap();
-                        let private = match pkg_json.private {
-                            Some(package_json_schema::Private::True) => true,
-                            _ => false,
-                        };
+                        let private =
+                            matches!(pkg_json.private, Some(package_json_schema::Private::True));
                         let name = pkg_json.name.clone().unwrap();
                         let version = pkg_json.version.clone().unwrap_or(String::from("0.0.0"));
                         let content = pkg_json.to_string();

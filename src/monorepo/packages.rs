@@ -2,6 +2,7 @@
 #![allow(clippy::needless_borrow)]
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::agent::manager::Agent;
 use crate::filesystem::paths::get_project_root_path;
@@ -24,13 +25,13 @@ struct PkgJson {
 }
 
 #[napi(object)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PackageInfo {
     pub name: String,
     pub private: bool,
     pub package_json_path: String,
     pub package_path: String,
-    pub pkg_json: String,
+    pub pkg_json: Value,
     pub root: bool,
     pub version: String,
 }
@@ -83,7 +84,7 @@ impl Monorepo {
                             private: info.private,
                             package_json_path,
                             package_path: info.path.clone(),
-                            pkg_json: pkg_json.to_string(),
+                            pkg_json: Value::String(pkg_json.to_string()),
                             root: is_root,
                             version,
                         }
@@ -157,7 +158,7 @@ impl Monorepo {
                                 .to_str()
                                 .unwrap()
                                 .to_string(),
-                            pkg_json: content,
+                            pkg_json: Value::String(content),
                             root: false,
                             version,
                         };
@@ -171,5 +172,113 @@ impl Monorepo {
             Some(Agent::Bun) => vec![],
             None => vec![],
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        fs::{remove_file, File},
+        io::Write,
+    };
+
+    fn create_agent_file(path: &Path) -> File {
+        File::create(path).expect("File not created")
+    }
+
+    fn delete_file(path: &Path) {
+        remove_file(path).expect("File not deleted");
+    }
+
+    fn create_root_package_json(path: &Path) {
+        let mut file = File::create(path).expect("File not created");
+        file.write(
+            r#"
+        {
+            "name": "@scope/root",
+            "version": "0.0.0",
+            "workspaces": [
+                "packages/package-a",
+                "packages/package-b"
+            ]
+        }"#
+            .as_bytes(),
+        )
+        .expect("File not written");
+    }
+
+    fn create_pnpm_workspace(path: &Path) {
+        let mut file = File::create(path).expect("File not created");
+        file.write(
+            r#"
+            packages:
+                - "packages/*"
+        "#
+            .as_bytes(),
+        )
+        .expect("File not written");
+    }
+
+    #[test]
+    fn monorepo_root_path() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let npm_lock = path.join("package-lock.json");
+
+        create_agent_file(&npm_lock);
+
+        let root_path = Monorepo::get_project_root_path();
+
+        assert_eq!(root_path, Some(path.to_str().unwrap().to_string()));
+
+        delete_file(&npm_lock);
+    }
+
+    #[test]
+    fn monorepo_agent() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let npm_lock = path.join("package-lock.json");
+
+        create_agent_file(&npm_lock);
+
+        let agent = Monorepo::get_agent();
+
+        assert_eq!(agent, Some(Agent::Npm));
+
+        delete_file(&npm_lock);
+    }
+
+    #[test]
+    fn monorepo_npm() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let npm_lock = path.join("package-lock.json");
+        let package_json = path.join("package.json");
+
+        create_agent_file(&npm_lock);
+        create_root_package_json(&package_json);
+
+        let packages = Monorepo::get_packages();
+
+        assert_eq!(packages.len(), 2);
+
+        delete_file(&npm_lock);
+        delete_file(&package_json);
+    }
+
+    #[test]
+    fn monorepo_pnpm() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let pnpm_lock = path.join("pnpm-lock.yaml");
+        let pnpm_workspace = path.join("pnpm-workspace.yaml");
+
+        create_agent_file(&pnpm_lock);
+        create_pnpm_workspace(&pnpm_workspace);
+
+        let packages = Monorepo::get_packages();
+
+        assert_eq!(packages.len(), 2);
+
+        delete_file(&pnpm_lock);
+        delete_file(&pnpm_workspace);
     }
 }

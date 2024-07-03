@@ -1,3 +1,6 @@
+#[allow(clippy::manual_unwrap_or_default)]
+#[allow(clippy::useless_vec)]
+
 use std::{env, path};
 
 pub fn get_project_root_path() -> Option<String> {

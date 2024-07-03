@@ -1,4 +1,5 @@
 #![warn(dead_code)]
+#![allow(clippy::needless_borrow)]
 
 use serde::{Deserialize, Serialize};
 

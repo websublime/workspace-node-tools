@@ -1,5 +1,8 @@
 use crate::{git::commands::Commit, monorepo::packages::PackageInfo};
 
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+
 use git_cliff_core::{
     changelog::Changelog,
     commit::{Commit as GitCommit, Signature},
@@ -9,9 +12,10 @@ use git_cliff_core::{
 use regex::Regex;
 
 #[napi(object)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConventionalPackage {
     pub package_info: PackageInfo,
+    pub conventional_config: Value,
     pub changelog: String
 }
 
@@ -28,11 +32,12 @@ impl ConventionalPackage {
     pub fn new(package_info: PackageInfo) -> Self {
         ConventionalPackage {
             package_info,
+            conventional_config: json!({}),
             changelog: String::new()
         }
     }
 
-    pub fn define_config(&self, owner: String, repo: String, domain: String, options: Option<Config>) -> Config {
+    pub fn define_config(&mut self, owner: String, repo: String, domain: String, options: Option<Config>) -> Config {
         let github_url = format!("{}/{}/{}", domain, owner, repo);
 
         let cliff_config = match options {
@@ -172,6 +177,8 @@ impl ConventionalPackage {
                 config
             }
         };
+
+        self.conventional_config = serde_json::to_value(&cliff_config).unwrap();
 
         cliff_config
     }

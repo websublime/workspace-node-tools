@@ -1,5 +1,5 @@
-#[allow(clippy::manual_unwrap_or_default)]
-#[allow(clippy::useless_vec)]
+#![allow(clippy::unwrap_or_default)]
+#![allow(clippy::useless_vec)]
 
 use std::{env, path};
 

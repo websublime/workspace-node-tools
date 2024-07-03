@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 use crate::{git::commands::Commit, monorepo::packages::PackageInfo};
 
 use serde::{Deserialize, Serialize};

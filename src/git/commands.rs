@@ -2,6 +2,7 @@
 use execute::Execute;
 use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     path::Path,
     process::{Command, Stdio},
@@ -16,7 +17,7 @@ use crate::{
 use super::conventional::{ConventionalPackage, ConventionalPackageOptions};
 
 #[napi(object)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Commit {
     pub hash: String,
     pub author_name: String,
@@ -26,14 +27,14 @@ pub struct Commit {
 }
 
 #[napi(object)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RemoteTags {
     pub hash: String,
     pub tag: String,
 }
 
 #[napi(object)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PublishTagInfo {
     pub hash: String,
     pub tag: String,

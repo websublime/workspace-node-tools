@@ -1,3 +1,5 @@
+#[allow(clippy::all)]
+
 use execute::Execute;
 use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;
@@ -474,10 +476,6 @@ impl Git {
 
         let tag_info =
             Self::get_last_known_publish_tag_info_for_package(package_info.clone(), cwd.clone());
-        let package_path = Path::new(package_info.package_path.as_str());
-        let package_path_relative = package_path
-            .strip_prefix(current_working_dir.as_str())
-            .unwrap();
 
         let hash = match tag_info {
             Some(tag) => Some(tag.hash),
@@ -504,7 +502,7 @@ impl Git {
         let commits_since = Self::get_commits_since(
             Some(current_working_dir),
             hash,
-            Some(package_path_relative.to_str().unwrap().to_string()),
+            Some(package_info.package_relative_path.clone()),
         );
         let mut conventional_package = ConventionalPackage::new(package_info);
         let conventional_config = conventional_package.define_config(

@@ -4,14 +4,14 @@
 use std::{env, path};
 
 pub fn get_project_root_path() -> Option<String> {
-	let current_dir = env::current_dir().unwrap();
-	let dir = walk_reverse_dir(current_dir.as_path()).unwrap_or_default();
+    let current_dir = env::current_dir().unwrap();
+    let dir = walk_reverse_dir(current_dir.as_path()).unwrap_or_default();
 
-	Some(dir)
+    Some(dir)
 }
 
 fn walk_reverse_dir(path: &path::Path) -> Option<String> {
-	let current_path = path.to_path_buf();
+    let current_path = path.to_path_buf();
     let map_files = vec![
         ("package-lock.json", "npm"),
         ("npm-shrinkwrap.json", "npm"),
@@ -32,14 +32,15 @@ fn walk_reverse_dir(path: &path::Path) -> Option<String> {
         return walk_reverse_dir(parent);
     }
 
-	None
+    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+
     use std::fs::{remove_file, File};
+    use std::path::Path;
 
     fn create_agent_file(path: &Path) -> File {
         File::create(path).expect("File not created")

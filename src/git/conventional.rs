@@ -1,13 +1,15 @@
 use crate::{git::commands::Commit, monorepo::packages::PackageInfo};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use git_cliff_core::{
     changelog::Changelog,
     commit::{Commit as GitCommit, Signature},
+    config::{
+        Bump, ChangelogConfig, CommitParser, Config, GitConfig, Remote, RemoteConfig, TextProcessor,
+    },
     release::Release,
-    config::{Config, ChangelogConfig, TextProcessor, GitConfig, CommitParser, Bump, RemoteConfig, Remote}
 };
 use regex::Regex;
 
@@ -16,7 +18,7 @@ use regex::Regex;
 pub struct ConventionalPackage {
     pub package_info: PackageInfo,
     pub conventional_config: Value,
-    pub changelog: String
+    pub changelog: String,
 }
 
 #[napi(object)]
@@ -33,11 +35,17 @@ impl ConventionalPackage {
         ConventionalPackage {
             package_info,
             conventional_config: json!({}),
-            changelog: String::new()
+            changelog: String::new(),
         }
     }
 
-    pub fn define_config(&mut self, owner: String, repo: String, domain: String, options: Option<Config>) -> Config {
+    pub fn define_config(
+        &mut self,
+        owner: String,
+        repo: String,
+        domain: String,
+        options: Option<Config>,
+    ) -> Config {
         let github_url = format!("{}/{}/{}", domain, owner, repo);
 
         let cliff_config = match options {
@@ -49,15 +57,15 @@ impl ConventionalPackage {
                         github: Remote {
                             owner: String::from(owner),
                             repo: String::from(repo),
-                            token: None
+                            token: None,
                         },
                         ..RemoteConfig::default()
                     },
                     changelog: ChangelogConfig {
                         header: Some(String::from(
                             r"# Changelog
-                                All notable changes to this project will be documented in this file.")
-                        ),
+                                All notable changes to this project will be documented in this file.",
+                        )),
                         body: Some(String::from(
                             r#"
                             {%- macro remote_url() -%}
@@ -93,7 +101,7 @@ impl ConventionalPackage {
                                         {{ self::print_commit(commit=commit) }}
                                     {% endif -%}
                                 {% endfor -%}
-                            {% endfor %}"#
+                            {% endfor %}"#,
                         )),
                         footer: Some(String::from(
                             r#"-- Total Releases: {{ releases | length }} --"#,
@@ -108,7 +116,9 @@ impl ConventionalPackage {
                     git: GitConfig {
                         commit_parsers: Some(vec![
                             CommitParser {
-                                message: Some(Regex::new("^feat").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^feat").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 0 -->⛰️  Features")),
                                 ..CommitParser::default()
                             },
@@ -123,55 +133,79 @@ impl ConventionalPackage {
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^perf").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^perf").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 4 -->⚡ Performance")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^refactor\\(clippy\\)").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^refactor\\(clippy\\)")
+                                        .expect("failed to compile regex"),
+                                ),
                                 skip: Some(true),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^refactor").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^refactor").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 2 -->🚜 Refactor")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^style").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^style").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 5 -->🎨 Styling")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^test").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^test").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 6 -->🧪 Testing")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^chore|^ci").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^chore|^ci").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 7 -->⚙️ Miscellaneous Tasks")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                body: Some(Regex::new(".*security").expect("failed to compile regex")),
+                                body: Some(
+                                    Regex::new(".*security").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 8 -->🛡️ Security")),
                                 ..CommitParser::default()
                             },
                             CommitParser {
-                                message: Some(Regex::new("^revert").expect("failed to compile regex")),
+                                message: Some(
+                                    Regex::new("^revert").expect("failed to compile regex"),
+                                ),
                                 group: Some(String::from("<!-- 9 -->◀️ Revert")),
                                 ..CommitParser::default()
                             },
                         ]),
                         protect_breaking_commits: Some(false),
                         filter_commits: Some(false),
-                        tag_pattern: Some(Regex::new("^((?:@[^/@]+/)?[^/@]+)(?:@([^/]+))?$").expect("failed to compile regex")),
-                        skip_tags: Some(Regex::new("beta|alpha|snapshot").expect("failed to compile regex")),
-                        ignore_tags: Some(Regex::new("rc|beta|alpha|snapshot").expect("failed to compile regex")),
+                        tag_pattern: Some(
+                            Regex::new("^((?:@[^/@]+/)?[^/@]+)(?:@([^/]+))?$")
+                                .expect("failed to compile regex"),
+                        ),
+                        skip_tags: Some(
+                            Regex::new("beta|alpha|snapshot").expect("failed to compile regex"),
+                        ),
+                        ignore_tags: Some(
+                            Regex::new("rc|beta|alpha|snapshot").expect("failed to compile regex"),
+                        ),
                         topo_order: Some(false),
                         sort_commits: Some(String::from("newest")),
                         ..GitConfig::default()
-                    }
+                    },
                 };
 
                 config
@@ -184,25 +218,33 @@ impl ConventionalPackage {
     }
 
     pub fn process_commits(&self, commits: &Vec<Commit>, config: &GitConfig) -> Vec<GitCommit> {
-        commits.iter().map(|commit| {
-            let timestamp = chrono::DateTime::parse_from_rfc2822(&commit.author_date).unwrap();
+        commits
+            .iter()
+            .map(|commit| {
+                let timestamp = chrono::DateTime::parse_from_rfc2822(&commit.author_date).unwrap();
 
-            let git_commit = GitCommit {
-                id: commit.hash.clone(),
-                message: commit.message.clone(),
-                author: Signature {
-                    name: Some(commit.author_name.clone()),
-                    email: Some(commit.author_email.clone()),
-                    timestamp: timestamp.timestamp()
-                },
-                ..GitCommit::default()
-            };
+                let git_commit = GitCommit {
+                    id: commit.hash.clone(),
+                    message: commit.message.clone(),
+                    author: Signature {
+                        name: Some(commit.author_name.clone()),
+                        email: Some(commit.author_email.clone()),
+                        timestamp: timestamp.timestamp(),
+                    },
+                    ..GitCommit::default()
+                };
 
-            git_commit.process(config).unwrap()
-        }).collect::<Vec<GitCommit>>()
+                git_commit.process(config).unwrap()
+            })
+            .collect::<Vec<GitCommit>>()
     }
 
-    pub fn generate_changelog(&self, commits: &Vec<GitCommit>, config: &Config, version: Option<String>) -> String {
+    pub fn generate_changelog(
+        &self,
+        commits: &Vec<GitCommit>,
+        config: &Config,
+        version: Option<String>,
+    ) -> String {
         let releases = Release {
             version,
             commits: commits.clone(),

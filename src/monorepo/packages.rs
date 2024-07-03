@@ -87,7 +87,7 @@ impl Monorepo {
                                 let mut rel = info.path.strip_prefix(&path).unwrap().to_string();
                                 rel.remove(0);
                                 rel
-                            },
+                            }
                         };
 
                         PackageInfo {
@@ -145,7 +145,12 @@ impl Monorepo {
                     .unwrap()
                 {
                     let entry = entry.unwrap();
-                    let mut rel_path = entry.path().strip_prefix(path).unwrap().display().to_string();
+                    let mut rel_path = entry
+                        .path()
+                        .strip_prefix(path)
+                        .unwrap()
+                        .display()
+                        .to_string();
                     rel_path.remove(0);
 
                     if patterns.is_match(CandidatePath::from(

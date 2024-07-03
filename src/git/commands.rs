@@ -1,22 +1,18 @@
 use execute::Execute;
+use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
+use regex::Regex;
 use std::{
     path::Path,
-    process::{Command, Stdio}
+    process::{Command, Stdio},
 };
-use regex::Regex;
-use icu::collator::{Collator, CollatorOptions, Strength, Numeric};
 use version_compare::{Cmp, Version};
 
 use crate::{
     filesystem::paths::get_project_root_path,
-    monorepo::{
-        packages::PackageInfo,
-        utils::package_scope_name_version
-    }
+    monorepo::{packages::PackageInfo, utils::package_scope_name_version},
 };
 
 use super::conventional::{ConventionalPackage, ConventionalPackageOptions};
-
 
 #[napi(object)]
 #[derive(Debug, Clone)]
@@ -78,7 +74,11 @@ impl Git {
         let current_working_dir = cwd.unwrap_or(working_dir);
 
         let mut command = Command::new("git");
-        command.arg("fetch").arg("origin").arg("--tags").arg("--force");
+        command
+            .arg("fetch")
+            .arg("origin")
+            .arg("--tags")
+            .arg("--force");
         command.current_dir(current_working_dir);
 
         command.stdout(Stdio::piped());
@@ -98,7 +98,11 @@ impl Git {
      * If the "since" parameter isn't provided, all commits
      * from the dawn of man are returned
      */
-    pub fn get_commits_since(cwd: Option<String>, since: Option<String>, relative: Option<String>) -> Vec<Commit> {
+    pub fn get_commits_since(
+        cwd: Option<String>,
+        since: Option<String>,
+        relative: Option<String>,
+    ) -> Vec<Commit> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
 
@@ -106,10 +110,14 @@ impl Git {
         const BREAK_LINE: &str = r#"#+#"#;
 
         let mut command = Command::new("git");
-        command.arg("--no-pager").arg("log").arg(format!(
-            "--format={}%H{}%an{}%ae{}%ad{}%B{}",
-            DELIMITER, DELIMITER, DELIMITER, DELIMITER, DELIMITER, BREAK_LINE
-        )).arg("--date=rfc2822");
+        command
+            .arg("--no-pager")
+            .arg("log")
+            .arg(format!(
+                "--format={}%H{}%an{}%ae{}%ad{}%B{}",
+                DELIMITER, DELIMITER, DELIMITER, DELIMITER, DELIMITER, BREAK_LINE
+            ))
+            .arg("--date=rfc2822");
 
         if let Some(since) = since {
             command.arg(format!("{}..", since));
@@ -133,7 +141,8 @@ impl Git {
 
         let output = String::from_utf8(output.stdout).unwrap();
 
-        output.split(BREAK_LINE)
+        output
+            .split(BREAK_LINE)
             .filter(|item| !item.trim().is_empty())
             .map(|item| {
                 let item_trimmed = item.trim();
@@ -162,7 +171,7 @@ impl Git {
         match local {
             Some(true) => command.arg("show-ref").arg("--tags"),
             Some(false) => command.arg("ls-remote").arg("--tags").arg("origin"),
-            None => command.arg("ls-remote").arg("--tags").arg("origin")
+            None => command.arg("ls-remote").arg("--tags").arg("origin"),
         };
 
         command.current_dir(current_working_dir);
@@ -183,25 +192,33 @@ impl Git {
         #[cfg(not(windows))]
         const LINE_ENDING: &'static str = "\n";
 
-        output.trim()
+        output
+            .trim()
             .split(LINE_ENDING)
             .filter(|tags| !tags.trim().is_empty())
             .map(|tags| {
-                let hash_tags = Regex::new(r"\s+").unwrap().split(tags).collect::<Vec<&str>>();
+                let hash_tags = Regex::new(r"\s+")
+                    .unwrap()
+                    .split(tags)
+                    .collect::<Vec<&str>>();
 
                 RemoteTags {
                     hash: hash_tags.get(0).unwrap().to_string(),
-                    tag: hash_tags.get(1).unwrap().to_string()
+                    tag: hash_tags.get(1).unwrap().to_string(),
                 }
             })
             .collect::<Vec<RemoteTags>>()
     }
 
-    pub fn get_last_known_publish_tag_info_for_package(package_info: PackageInfo, cwd: Option<String>) -> Option<PublishTagInfo> {
+    pub fn get_last_known_publish_tag_info_for_package(
+        package_info: PackageInfo,
+        cwd: Option<String>,
+    ) -> Option<PublishTagInfo> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
 
-        let mut remote_tags = Self::get_remote_or_local_tags(Some(current_working_dir.clone()), Some(false));
+        let mut remote_tags =
+            Self::get_remote_or_local_tags(Some(current_working_dir.clone()), Some(false));
         let mut local_tags = Self::get_remote_or_local_tags(Some(current_working_dir), Some(true));
 
         /*let mut remote_tags = vec![
@@ -266,7 +283,8 @@ impl Git {
                     }
 
                     let current_tag_meta = package_scope_name_version(&tag).unwrap();
-                    let highest_tag_meta = package_scope_name_version(&highest_tag.clone().unwrap()).unwrap();
+                    let highest_tag_meta =
+                        package_scope_name_version(&highest_tag.clone().unwrap()).unwrap();
 
                     let current_version = Version::from(&current_tag_meta.version).unwrap();
                     let highest_version = Version::from(&highest_tag_meta.version).unwrap();
@@ -274,7 +292,6 @@ impl Git {
                     if current_version.compare_to(&highest_version, Cmp::Gt) {
                         highest_tag = Some(tag);
                     }
-
                 }
             });
 
@@ -293,15 +310,14 @@ impl Git {
                     }
                 });
             }
-
         }
 
         if match_tag.is_some() {
-            return Some(PublishTagInfo{
+            return Some(PublishTagInfo {
                 hash: match_tag.unwrap().hash.clone(),
                 tag: match_tag.unwrap().tag.clone(),
-                package: package_info.name
-            })
+                package: package_info.name,
+            });
         }
 
         None
@@ -310,12 +326,19 @@ impl Git {
     /**
      * Grabs the last known publish tag info for all packages in the monorepo
      */
-    pub fn get_last_known_publish_tag_info_for_all_packages(package_info: Vec<PackageInfo>, cwd: Option<String>) -> Vec<Option<PublishTagInfo>> {
+    pub fn get_last_known_publish_tag_info_for_all_packages(
+        package_info: Vec<PackageInfo>,
+        cwd: Option<String>,
+    ) -> Vec<Option<PublishTagInfo>> {
         Self::fetch_all_tags(cwd.clone()).expect("Fetch all tags");
 
-        package_info.iter().map(|item| {
-            Self::get_last_known_publish_tag_info_for_package(item.clone(), cwd.clone())
-        }).filter(|item| item.is_some()).collect::<Vec<Option<PublishTagInfo>>>()
+        package_info
+            .iter()
+            .map(|item| {
+                Self::get_last_known_publish_tag_info_for_package(item.clone(), cwd.clone())
+            })
+            .filter(|item| item.is_some())
+            .collect::<Vec<Option<PublishTagInfo>>>()
     }
 
     /**
@@ -327,7 +350,11 @@ impl Git {
         let current_working_dir = cwd.unwrap_or(working_dir);
 
         let mut command = Command::new("git");
-        command.arg("--no-pager").arg("diff").arg("--name-only").arg(format!("{}..", sha));
+        command
+            .arg("--no-pager")
+            .arg("diff")
+            .arg("--name-only")
+            .arg(format!("{}..", sha));
         command.current_dir(current_working_dir.clone());
 
         command.stdout(Stdio::piped());
@@ -342,7 +369,8 @@ impl Git {
         let output = String::from_utf8(output.stdout).unwrap();
         let root = Path::new(&current_working_dir);
 
-        output.split("\n")
+        output
+            .split("\n")
             .filter(|item| !item.trim().is_empty())
             .map(|item| root.join(item))
             .filter(|item| item.exists())
@@ -355,7 +383,11 @@ impl Git {
      * returns all the files that have changed since any of these git tags
      * have occured, with duplicates removed.
      */
-    pub fn get_all_files_changed_since_tag_infos(package_info: Vec<PackageInfo>, tag_info: Vec<PublishTagInfo>, cwd: Option<String>) -> Vec<String> {
+    pub fn get_all_files_changed_since_tag_infos(
+        package_info: Vec<PackageInfo>,
+        tag_info: Vec<PublishTagInfo>,
+        cwd: Option<String>,
+    ) -> Vec<String> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
 
@@ -366,11 +398,22 @@ impl Git {
 
             match tag {
                 Some(tag) => {
-                    let files = Self::git_all_files_changed_since_sha(tag.hash.clone(), Some(current_working_dir.clone()));
-                    let pkg_files = files.iter().filter(|file| file.starts_with(item.package_path.as_str())).collect::<Vec<&String>>();
+                    let files = Self::git_all_files_changed_since_sha(
+                        tag.hash.clone(),
+                        Some(current_working_dir.clone()),
+                    );
+                    let pkg_files = files
+                        .iter()
+                        .filter(|file| file.starts_with(item.package_path.as_str()))
+                        .collect::<Vec<&String>>();
 
-                    all_files.append(&mut pkg_files.iter().map(|file| file.to_string()).collect::<Vec<String>>());
-                },
+                    all_files.append(
+                        &mut pkg_files
+                            .iter()
+                            .map(|file| file.to_string())
+                            .collect::<Vec<String>>(),
+                    );
+                }
                 None => {}
             }
         });
@@ -382,17 +425,32 @@ impl Git {
      * Given an input of the "main" branch name,
      * returns all the files that have changed since the current branch was created
      */
-    pub fn get_all_files_changed_since_branch(package_info: Vec<PackageInfo>, branch: String, cwd: Option<String>) -> Vec<String> {
+    pub fn get_all_files_changed_since_branch(
+        package_info: Vec<PackageInfo>,
+        branch: String,
+        cwd: Option<String>,
+    ) -> Vec<String> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
 
         let mut all_files = vec![];
 
         package_info.iter().for_each(|item| {
-            let files = Self::git_all_files_changed_since_sha(branch.clone(), Some(current_working_dir.clone()));
-            let pkg_files = files.iter().filter(|file| file.starts_with(item.package_path.as_str())).collect::<Vec<&String>>();
+            let files = Self::git_all_files_changed_since_sha(
+                branch.clone(),
+                Some(current_working_dir.clone()),
+            );
+            let pkg_files = files
+                .iter()
+                .filter(|file| file.starts_with(item.package_path.as_str()))
+                .collect::<Vec<&String>>();
 
-            all_files.append(&mut pkg_files.iter().map(|file| file.to_string()).collect::<Vec<String>>());
+            all_files.append(
+                &mut pkg_files
+                    .iter()
+                    .map(|file| file.to_string())
+                    .collect::<Vec<String>>(),
+            );
         });
 
         all_files
@@ -401,7 +459,12 @@ impl Git {
     // git diff-tree --no-commit-id --name-only -r origin/main..HEAD
     // git --no-pager diff --name-only HEAD~1
 
-    pub fn get_conventional_for_package(package_info: PackageInfo, no_fetch_all: Option<bool>, cwd: Option<String>, conventional_options: Option<ConventionalPackageOptions>) -> ConventionalPackage {
+    pub fn get_conventional_for_package(
+        package_info: PackageInfo,
+        no_fetch_all: Option<bool>,
+        cwd: Option<String>,
+        conventional_options: Option<ConventionalPackageOptions>,
+    ) -> ConventionalPackage {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);
 
@@ -409,41 +472,60 @@ impl Git {
             Self::fetch_all(cwd.clone()).expect("Fetch all");
         }
 
-        let tag_info = Self::get_last_known_publish_tag_info_for_package(package_info.clone(), cwd.clone());
+        let tag_info =
+            Self::get_last_known_publish_tag_info_for_package(package_info.clone(), cwd.clone());
         let package_path = Path::new(package_info.package_path.as_str());
-        let package_path_relative = package_path.strip_prefix(current_working_dir.as_str()).unwrap();
+        let package_path_relative = package_path
+            .strip_prefix(current_working_dir.as_str())
+            .unwrap();
 
         let hash = match tag_info {
             Some(tag) => Some(tag.hash),
-            None => None
+            None => None,
         };
 
         let convention_options = match conventional_options {
-            Some(options) => {
-                ConventionalPackageOptions {
-                    owner: options.owner.or(Some(String::from("orga"))),
-                    repo: options.repo.or(Some(String::from("tenant"))),
-                    version: options.version.or(Some(String::from("0.0.0"))),
-                    domain: options.domain.or(Some(String::from("https://github.com")))
-                }
+            Some(options) => ConventionalPackageOptions {
+                owner: options.owner.or(Some(String::from("orga"))),
+                repo: options.repo.or(Some(String::from("tenant"))),
+                version: options.version.or(Some(String::from("0.0.0"))),
+                domain: options.domain.or(Some(String::from("https://github.com"))),
             },
-            None => {
-                ConventionalPackageOptions {
-                    owner: Some(String::from("orga")),
-                    repo: Some(String::from("tenant")),
-                    version: Some(String::from("0.0.0")),
-                    domain: Some(String::from("https://github.com"))
-                }
-            }
+            None => ConventionalPackageOptions {
+                owner: Some(String::from("orga")),
+                repo: Some(String::from("tenant")),
+                version: Some(String::from("0.0.0")),
+                domain: Some(String::from("https://github.com")),
+            },
         };
 
-        let commits_since = Self::get_commits_since(Some(current_working_dir), hash, Some(package_path_relative.to_str().unwrap().to_string()));
+        let commits_since = Self::get_commits_since(
+            Some(current_working_dir),
+            hash,
+            Some(package_path_relative.to_str().unwrap().to_string()),
+        );
         let mut conventional_package = ConventionalPackage::new(package_info);
-        let conventional_config = conventional_package.define_config(convention_options.owner.expect("Owner repo needs to be defined"), convention_options.repo.expect("Repo scope needs to be defined"), convention_options.domain.expect("Github main domain url need to be defined"), None);
+        let conventional_config = conventional_package.define_config(
+            convention_options
+                .owner
+                .expect("Owner repo needs to be defined"),
+            convention_options
+                .repo
+                .expect("Repo scope needs to be defined"),
+            convention_options
+                .domain
+                .expect("Github main domain url need to be defined"),
+            None,
+        );
         let config_git = conventional_config.git.clone();
 
-        let conventional_commits = conventional_package.process_commits(&commits_since, &config_git);
-        let changelog = conventional_package.generate_changelog(&conventional_commits, &conventional_config, convention_options.version);
+        let conventional_commits =
+            conventional_package.process_commits(&commits_since, &config_git);
+        let changelog = conventional_package.generate_changelog(
+            &conventional_commits,
+            &conventional_config,
+            convention_options.version,
+        );
 
         conventional_package.changelog = changelog;
         conventional_package

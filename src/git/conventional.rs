@@ -19,7 +19,7 @@ pub struct ConventionalPackage {
     pub package_info: PackageInfo,
     pub conventional_config: Value,
     pub conventional_commits: Value,
-    pub changelog_output: String
+    pub changelog_output: String,
 }
 
 #[napi(object)]
@@ -38,7 +38,7 @@ impl ConventionalPackage {
             package_info,
             conventional_config: json!({}),
             conventional_commits: json!([]),
-            changelog_output: String::new()
+            changelog_output: String::new(),
         }
     }
 
@@ -47,6 +47,7 @@ impl ConventionalPackage {
         owner: String,
         repo: String,
         domain: String,
+        title: Option<String>,
         options: Option<Config>,
     ) -> Config {
         let github_url = format!("{}/{}/{}", domain, owner, repo);
@@ -65,10 +66,7 @@ impl ConventionalPackage {
                         ..RemoteConfig::default()
                     },
                     changelog: ChangelogConfig {
-                        header: Some(String::from(
-                            r"# Changelog
-                                All notable changes to this project will be documented in this file.",
-                        )),
+                        header: title,
                         body: Some(String::from(
                             r#"
                             {%- macro remote_url() -%}

@@ -490,14 +490,14 @@ impl Git {
                 repo: options.repo.or(Some(String::from("tenant"))),
                 version: options.version.or(Some(String::from("0.0.0"))),
                 domain: options.domain.or(Some(String::from("https://github.com"))),
-                title: options.title
+                title: options.title,
             },
             None => ConventionalPackageOptions {
                 owner: Some(String::from("orga")),
                 repo: Some(String::from("tenant")),
                 version: Some(String::from("0.0.0")),
                 domain: Some(String::from("https://github.com")),
-                title: None
+                title: None,
             },
         };
 
@@ -517,6 +517,7 @@ impl Git {
             convention_options
                 .domain
                 .expect("Github main domain url need to be defined"),
+            convention_options.title,
             None,
         );
         let config_git = conventional_config.git.clone();
@@ -532,7 +533,8 @@ impl Git {
         );
 
         conventional_package.changelog_output = changelog;
-        conventional_package.conventional_commits = serde_json::to_value(&conventional_commits).unwrap();
+        conventional_package.conventional_commits =
+            serde_json::to_value(&conventional_commits).unwrap();
         conventional_package.conventional_config = serde_json::to_value(&config_git).unwrap();
 
         conventional_package

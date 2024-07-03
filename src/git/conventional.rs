@@ -18,7 +18,8 @@ use regex::Regex;
 pub struct ConventionalPackage {
     pub package_info: PackageInfo,
     pub conventional_config: Value,
-    pub changelog: String,
+    pub conventional_commits: Value,
+    pub changelog_output: String
 }
 
 #[napi(object)]
@@ -28,6 +29,7 @@ pub struct ConventionalPackageOptions {
     pub repo: Option<String>,
     pub version: Option<String>,
     pub domain: Option<String>,
+    pub title: Option<String>,
 }
 
 impl ConventionalPackage {
@@ -35,12 +37,13 @@ impl ConventionalPackage {
         ConventionalPackage {
             package_info,
             conventional_config: json!({}),
-            changelog: String::new(),
+            conventional_commits: json!([]),
+            changelog_output: String::new()
         }
     }
 
     pub fn define_config(
-        &mut self,
+        &self,
         owner: String,
         repo: String,
         domain: String,
@@ -211,8 +214,6 @@ impl ConventionalPackage {
                 config
             }
         };
-
-        self.conventional_config = serde_json::to_value(&cliff_config).unwrap();
 
         cliff_config
     }

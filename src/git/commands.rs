@@ -490,12 +490,14 @@ impl Git {
                 repo: options.repo.or(Some(String::from("tenant"))),
                 version: options.version.or(Some(String::from("0.0.0"))),
                 domain: options.domain.or(Some(String::from("https://github.com"))),
+                title: options.title
             },
             None => ConventionalPackageOptions {
                 owner: Some(String::from("orga")),
                 repo: Some(String::from("tenant")),
                 version: Some(String::from("0.0.0")),
                 domain: Some(String::from("https://github.com")),
+                title: None
             },
         };
 
@@ -518,16 +520,21 @@ impl Git {
             None,
         );
         let config_git = conventional_config.git.clone();
+        let conventional_package_live_one = conventional_package.clone();
+        let conventional_package_live_two = conventional_package.clone();
 
         let conventional_commits =
-            conventional_package.process_commits(&commits_since, &config_git);
-        let changelog = conventional_package.generate_changelog(
+            conventional_package_live_one.process_commits(&commits_since, &config_git);
+        let changelog = conventional_package_live_two.generate_changelog(
             &conventional_commits,
             &conventional_config,
             convention_options.version,
         );
 
-        conventional_package.changelog = changelog;
+        conventional_package.changelog_output = changelog;
+        conventional_package.conventional_commits = serde_json::to_value(&conventional_commits).unwrap();
+        conventional_package.conventional_config = serde_json::to_value(&config_git).unwrap();
+
         conventional_package
     }
 }

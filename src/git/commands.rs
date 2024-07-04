@@ -3,7 +3,10 @@ use execute::Execute;
 use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::{
+    env::temp_dir,
+    fs::{remove_file, File},
     path::Path,
     process::{Command, Stdio},
 };
@@ -536,5 +539,141 @@ impl Git {
         conventional_package.conventional_config = serde_json::to_value(&config_git).unwrap();
 
         conventional_package
+    }
+
+    pub fn git_commit(
+        mut message: String,
+        body: Option<String>,
+        footer: Option<String>,
+        cwd: Option<String>,
+    ) -> Result<bool, std::io::Error> {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        if body.is_some() {
+            message.push_str("\n\n");
+            message.push_str(body.unwrap().as_str());
+        }
+
+        if footer.is_some() {
+            message.push_str("\n\n");
+            message.push_str(footer.unwrap().as_str());
+        }
+
+        let temp_file = temp_dir().join("commit_message.txt");
+        let mut file = File::create(temp_file.clone()).unwrap();
+        file.write_all(message.as_bytes()).unwrap();
+
+        let mut command = Command::new("git");
+        command
+            .arg("commit")
+            .arg("-F")
+            .arg(temp_file.to_str().unwrap())
+            .arg("--no-verify");
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        remove_file(temp_file).expect("Commit file not deleted");
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn git_push(cwd: Option<String>) -> Result<bool, std::io::Error> {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        let mut command = Command::new("git");
+        command.arg("push").arg("--no-verify");
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn git_tag(
+        tag: String,
+        message: Option<String>,
+        cwd: Option<String>,
+    ) -> Result<bool, std::io::Error> {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        let mut command = Command::new("git");
+        command.arg("tag").arg("-a").arg(tag.clone());
+
+        if message.is_some() {
+            command.arg("-m").arg(message.unwrap());
+        }
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn git_current_sha(cwd: Option<String>) -> String {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        let mut command = Command::new("git");
+        command.arg("rev-parse").arg("--short").arg("HEAD");
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        String::from_utf8(output.stdout).unwrap().trim().to_string()
+    }
+
+    pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        let mut command = Command::new("git");
+        command.arg("status").arg("--porcelain");
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        let output = String::from_utf8(output.stdout).unwrap();
+
+        if output.trim().is_empty() {
+            return false;
+        }
+
+        true
     }
 }

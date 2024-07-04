@@ -32,6 +32,7 @@ pub struct PackageInfo {
     pub private: bool,
     pub package_json_path: String,
     pub package_path: String,
+    pub package_relative_path: String,
     pub pkg_json: Value,
     pub root: bool,
     pub version: String,
@@ -80,12 +81,22 @@ impl Monorepo {
                         let version = pkg_json.version.clone().unwrap_or(String::from("0.0.0"));
                         let is_root = info.path == path;
 
+                        let releative_path = match is_root {
+                            true => String::from("."),
+                            false => {
+                                let mut rel = info.path.strip_prefix(&path).unwrap().to_string();
+                                rel.remove(0);
+                                rel
+                            }
+                        };
+
                         PackageInfo {
                             name: info.name.clone(),
                             private: info.private,
                             package_json_path,
                             package_path: info.path.clone(),
-                            pkg_json: Value::String(pkg_json.to_string()),
+                            package_relative_path: releative_path,
+                            pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: is_root,
                             version,
                         }
@@ -134,6 +145,13 @@ impl Monorepo {
                     .unwrap()
                 {
                     let entry = entry.unwrap();
+                    let mut rel_path = entry
+                        .path()
+                        .strip_prefix(path)
+                        .unwrap()
+                        .display()
+                        .to_string();
+                    rel_path.remove(0);
 
                     if patterns.is_match(CandidatePath::from(
                         entry.path().strip_prefix(path).unwrap(),
@@ -144,7 +162,6 @@ impl Monorepo {
                             matches!(pkg_json.private, Some(package_json_schema::Private::True));
                         let name = pkg_json.name.clone().unwrap();
                         let version = pkg_json.version.clone().unwrap_or(String::from("0.0.0"));
-                        let content = pkg_json.to_string();
 
                         let pkg_info = PackageInfo {
                             name,
@@ -157,7 +174,8 @@ impl Monorepo {
                                 .to_str()
                                 .unwrap()
                                 .to_string(),
-                            pkg_json: Value::String(content),
+                            package_relative_path: rel_path,
+                            pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: false,
                             version,
                         };

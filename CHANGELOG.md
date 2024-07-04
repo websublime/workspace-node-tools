@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2024-07-04
+
+### 🚀 Features
+
+- Git commands
+- Package info as now property for relative path of the package
+- Package info converts to json and conventional config present in struct as json value
+- Conventional package with commits,config and changelog output
+- More git commands
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Maintenance sync lock file
+- Maintenance format
+- Support for changelog title
+- Use of relative path from package info
+- Maintenance format
+- Serialize and deserialize objects
+- Merge pull request #6 from websublime/feature/git
+- Bump to version 0.5.0
+
 ## [0.4.0] - 2024-07-03
 
 ### 🚀 Features

@@ -98,6 +98,31 @@ impl Git {
         }
     }
 
+    pub fn get_diverged_commit(refer: String, cwd: Option<String>) -> Option<String> {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.unwrap_or(working_dir);
+
+        let mut command = Command::new("git");
+        command
+            .arg("merge-base")
+            .arg(refer)
+            .arg("HEAD");
+        command.current_dir(current_working_dir);
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        if !output.status.success() {
+            return None;
+        }
+
+        let output = String::from_utf8(output.stdout).unwrap();
+
+        Some(output)
+    }
+
     /**
      * Returns commits since a particular git SHA or tag.
      * If the "since" parameter isn't provided, all commits
@@ -615,13 +640,10 @@ impl Git {
     ) -> Result<bool, std::io::Error> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);
+        let msg = message.or(Some(tag.clone())).unwrap();
 
         let mut command = Command::new("git");
-        command.arg("tag").arg("-a").arg(tag.clone());
-
-        if message.is_some() {
-            command.arg("-m").arg(message.unwrap());
-        }
+        command.arg("tag").arg("-a").arg(tag.clone()).arg("-m").arg(msg);
 
         command.current_dir(current_working_dir.clone());
 

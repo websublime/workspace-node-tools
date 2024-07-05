@@ -103,10 +103,7 @@ impl Git {
         let current_working_dir = cwd.unwrap_or(working_dir);
 
         let mut command = Command::new("git");
-        command
-            .arg("merge-base")
-            .arg(refer)
-            .arg("HEAD");
+        command.arg("merge-base").arg(refer).arg("HEAD");
         command.current_dir(current_working_dir);
 
         command.stdout(Stdio::piped());
@@ -643,7 +640,12 @@ impl Git {
         let msg = message.or(Some(tag.clone())).unwrap();
 
         let mut command = Command::new("git");
-        command.arg("tag").arg("-a").arg(tag.clone()).arg("-m").arg(msg);
+        command
+            .arg("tag")
+            .arg("-a")
+            .arg(tag.clone())
+            .arg("-m")
+            .arg(msg);
 
         command.current_dir(current_working_dir.clone());
 

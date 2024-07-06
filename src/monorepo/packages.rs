@@ -201,7 +201,7 @@ impl Monorepo {
 
         packages
             .iter()
-            .map(|pkg| {
+            .flat_map(|pkg| {
                 changed_files
                     .iter()
                     .filter(|file| file.starts_with(&pkg.package_path))
@@ -217,7 +217,6 @@ impl Monorepo {
                     })
                     .collect::<Vec<PackageInfo>>()
             })
-            .flatten()
             .collect::<Vec<PackageInfo>>()
     }
 }

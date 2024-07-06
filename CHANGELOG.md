@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2024-07-06
+
+### 🐛 Bug Fixes
+
+- Duplicated keys in changed packages
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Merge pull request #9 from websublime/fix/duplicated-changed-packages
+- Bump version
+
 ## [0.7.0] - 2024-07-06
 
 ### 🚀 Features

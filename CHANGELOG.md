@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2024-07-06
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Add more git commands and fix git tag creation
+- Maintenance format
+- Fail safe for get_root_workspace by git
+- Merge pull request #7 from websublime/feature/more-git
+- Bump version
+
 ## [0.5.0] - 2024-07-04
 
 ### 🚀 Features

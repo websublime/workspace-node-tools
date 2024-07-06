@@ -27,7 +27,7 @@ struct PkgJson {
 }
 
 #[napi(object)]
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
     pub name: String,
     pub private: bool,
@@ -202,7 +202,7 @@ impl Monorepo {
         packages
             .iter()
             .flat_map(|pkg| {
-                changed_files
+                let mut pkgs = changed_files
                     .iter()
                     .filter(|file| file.starts_with(&pkg.package_path))
                     .map(|_file| PackageInfo {
@@ -215,7 +215,11 @@ impl Monorepo {
                         root: pkg.root,
                         version: pkg.version.clone(),
                     })
-                    .collect::<Vec<PackageInfo>>()
+                    .collect::<Vec<PackageInfo>>();
+
+                pkgs.dedup_by(|a, b| a.name == b.name);
+
+                pkgs
             })
             .collect::<Vec<PackageInfo>>()
     }

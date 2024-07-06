@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2024-07-06
+
+### 🚀 Features
+
+- Monorepo method for getting changed packages
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Chang map tp flat_map
+- Merge pull request #8 from websublime/feature/changed-packages
+- Bump version
+
 ## [0.6.0] - 2024-07-06
 
 ### ⚙️ Miscellaneous Tasks

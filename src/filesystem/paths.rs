@@ -1,13 +1,36 @@
 #![allow(clippy::unwrap_or_default)]
 #![allow(clippy::useless_vec)]
 
-use std::{env, path};
+use execute::Execute;
+use std::{
+    env, path,
+    process::{Command, Stdio},
+};
 
 pub fn get_project_root_path() -> Option<String> {
     let current_dir = env::current_dir().unwrap();
-    let dir = walk_reverse_dir(current_dir.as_path()).unwrap_or_default();
+    let mut dir = walk_reverse_dir(current_dir.as_path());
 
-    Some(dir)
+    if dir.is_none() {
+        let mut command = Command::new("git");
+        command.arg("rev-parse").arg("--show-toplevel");
+
+        command.current_dir(current_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        if !output.status.success() {
+            dir = Some(current_dir.to_str().unwrap().to_string());
+        } else {
+            let output = String::from_utf8(output.stdout).unwrap();
+            dir = Some(output.trim().to_string());
+        }
+    }
+
+    dir
 }
 
 fn walk_reverse_dir(path: &path::Path) -> Option<String> {
@@ -104,5 +127,14 @@ mod tests {
         assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
 
         delete_agent_file(&bun_lock);
+    }
+
+    #[test]
+    fn git_root_project() {
+        let path = std::env::current_dir().expect("Current user home directory");
+
+        let project_root = get_project_root_path();
+
+        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
     }
 }

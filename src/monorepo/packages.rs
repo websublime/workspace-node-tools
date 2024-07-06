@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::agent::manager::Agent;
 use crate::filesystem::paths::get_project_root_path;
+use crate::git::commands::Git;
 use execute::Execute;
 use package_json_schema::PackageJson;
 use std::path::Path;
@@ -189,6 +190,34 @@ impl Monorepo {
             Some(Agent::Bun) => vec![],
             None => vec![],
         };
+    }
+
+    pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
+        let packages = Monorepo::get_packages();
+        let root = Monorepo::get_project_root_path();
+        let since = sha.unwrap_or(String::from("main"));
+
+        let changed_files = Git::get_all_files_changed_since_branch(packages.clone(), since, root);
+
+        packages
+            .iter()
+            .flat_map(|pkg| {
+                changed_files
+                    .iter()
+                    .filter(|file| file.starts_with(&pkg.package_path))
+                    .map(|_file| PackageInfo {
+                        name: pkg.name.clone(),
+                        private: pkg.private,
+                        package_json_path: pkg.package_json_path.clone(),
+                        package_path: pkg.package_path.clone(),
+                        package_relative_path: pkg.package_relative_path.clone(),
+                        pkg_json: pkg.pkg_json.clone(),
+                        root: pkg.root,
+                        version: pkg.version.clone(),
+                    })
+                    .collect::<Vec<PackageInfo>>()
+            })
+            .collect::<Vec<PackageInfo>>()
     }
 }
 

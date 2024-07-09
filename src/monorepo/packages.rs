@@ -9,10 +9,11 @@ use crate::agent::manager::Agent;
 use crate::filesystem::paths::get_project_root_path;
 use crate::git::commands::Git;
 use execute::Execute;
-use package_json_schema::PackageJson;
+use package_json_schema::{PackageJson, Repository};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
+use regex::Regex;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PnpmInfo {
@@ -53,6 +54,38 @@ impl Monorepo {
         Agent::detect(&path)
     }
 
+    pub fn format_repo_url(repo: Option<Repository>) -> String {
+        let regex = Regex::new(r"(?m)^((?<prefix>git[/+]))?((?<protocol>https?|ssh|git|ftps?)://)?((?<user>[^/@]+)@)?(?<host>[^/:]+)[/:](?<port>[^/:]+)/(?<path>.+/)?(?<repo>.+?)(?<suffix>\.git[/]?)?$").unwrap();
+
+        match repo {
+            Some(Repository::Path(repo)) => {
+                let captures = regex.captures(&repo).unwrap();
+
+                let protocol = captures.name("protocol").unwrap().as_str().to_string();
+                let host = captures.name("host").unwrap().as_str().to_string();
+                let port = captures.name("port").unwrap().as_str().to_string();
+                let path = captures.name("path").unwrap().as_str().to_string();
+                let repo = captures.name("repo").unwrap().as_str();
+
+                format!("{}{}{}{}{}", protocol, host, port, path, repo)
+
+            },
+            Some(Repository::Object{url, .. }) => {
+                let url = url.unwrap();
+                let captures = regex.captures(&url).unwrap();
+
+                let protocol = captures.name("protocol").unwrap().as_str().to_string();
+                let host = captures.name("host").unwrap().as_str().to_string();
+                let port = captures.name("port").unwrap().as_str().to_string();
+                let path = captures.name("path").unwrap().as_str().to_string();
+                let repo = captures.name("repo").unwrap().as_str();
+
+                format!("{}{}{}{}{}", protocol, host, port, path, repo)
+            },
+            None => String::from("")
+        }
+    }
+
     pub fn get_packages() -> Vec<PackageInfo> {
         return match Monorepo::get_agent() {
             Some(Agent::Pnpm) => {
@@ -90,6 +123,8 @@ impl Monorepo {
                                 rel
                             }
                         };
+
+                        Monorepo::format_repo_url(pkg_json.repository.clone());
 
                         PackageInfo {
                             name: info.name.clone(),

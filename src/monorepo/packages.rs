@@ -38,6 +38,7 @@ pub struct PackageInfo {
     pub pkg_json: Value,
     pub root: bool,
     pub version: String,
+    pub url: String,
 }
 
 pub struct Monorepo;
@@ -61,27 +62,27 @@ impl Monorepo {
             Some(Repository::Path(repo)) => {
                 let captures = regex.captures(&repo).unwrap();
 
-                let protocol = captures.name("protocol").unwrap().as_str().to_string();
+                //let protocol = captures.name("protocol").unwrap().as_str().to_string();
                 let host = captures.name("host").unwrap().as_str().to_string();
                 let port = captures.name("port").unwrap().as_str().to_string();
-                let path = captures.name("path").unwrap().as_str().to_string();
+                //let path = captures.name("path").unwrap().as_str().to_string();
                 let repo = captures.name("repo").unwrap().as_str();
 
-                format!("{}{}{}{}{}", protocol, host, port, path, repo)
+                format!("https://{}/{}/{}", host, port, repo)
             }
             Some(Repository::Object { url, .. }) => {
                 let url = url.unwrap();
                 let captures = regex.captures(&url).unwrap();
 
-                let protocol = captures.name("protocol").unwrap().as_str().to_string();
+                //let protocol = captures.name("protocol").unwrap().as_str().to_string();
                 let host = captures.name("host").unwrap().as_str().to_string();
                 let port = captures.name("port").unwrap().as_str().to_string();
-                let path = captures.name("path").unwrap().as_str().to_string();
+                //let path = captures.name("path").unwrap_or("").as_str().to_string();
                 let repo = captures.name("repo").unwrap().as_str();
 
-                format!("{}{}{}{}{}", protocol, host, port, path, repo)
+                format!("https://{}/{}/{}", host, port, repo)
             }
-            None => String::from(""),
+            None => String::from("https://github.com/my-orga/my-repo"),
         }
     }
 
@@ -123,7 +124,7 @@ impl Monorepo {
                             }
                         };
 
-                        Monorepo::format_repo_url(pkg_json.repository.clone());
+                        let repo_url = Monorepo::format_repo_url(pkg_json.repository.clone());
 
                         PackageInfo {
                             name: info.name.clone(),
@@ -134,6 +135,7 @@ impl Monorepo {
                             pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: is_root,
                             version,
+                            url: repo_url,
                         }
                     })
                     .collect::<Vec<PackageInfo>>()
@@ -198,6 +200,8 @@ impl Monorepo {
                         let name = pkg_json.name.clone().unwrap();
                         let version = pkg_json.version.clone().unwrap_or(String::from("0.0.0"));
 
+                        let repo_url = Monorepo::format_repo_url(pkg_json.repository.clone());
+
                         let pkg_info = PackageInfo {
                             name,
                             private,
@@ -213,6 +217,7 @@ impl Monorepo {
                             pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: false,
                             version,
+                            url: repo_url,
                         };
 
                         packages.push(pkg_info);
@@ -248,6 +253,7 @@ impl Monorepo {
                         pkg_json: pkg.pkg_json.clone(),
                         root: pkg.root,
                         version: pkg.version.clone(),
+                        url: pkg.url.clone(),
                     })
                     .collect::<Vec<PackageInfo>>();
 

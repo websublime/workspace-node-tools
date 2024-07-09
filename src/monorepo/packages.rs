@@ -10,10 +10,10 @@ use crate::filesystem::paths::get_project_root_path;
 use crate::git::commands::Git;
 use execute::Execute;
 use package_json_schema::{PackageJson, Repository};
+use regex::Regex;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
-use regex::Regex;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PnpmInfo {
@@ -68,9 +68,8 @@ impl Monorepo {
                 let repo = captures.name("repo").unwrap().as_str();
 
                 format!("{}{}{}{}{}", protocol, host, port, path, repo)
-
-            },
-            Some(Repository::Object{url, .. }) => {
+            }
+            Some(Repository::Object { url, .. }) => {
                 let url = url.unwrap();
                 let captures = regex.captures(&url).unwrap();
 
@@ -81,8 +80,8 @@ impl Monorepo {
                 let repo = captures.name("repo").unwrap().as_str();
 
                 format!("{}{}{}{}{}", protocol, host, port, path, repo)
-            },
-            None => String::from("")
+            }
+            None => String::from(""),
         }
     }
 

@@ -14,6 +14,8 @@ use regex::Regex;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
+use super::errors::PackageJsonErrorEnum;
+
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PnpmInfo {
@@ -61,29 +63,80 @@ impl Monorepo {
         match repo {
             Some(Repository::Path(repo)) => {
                 let captures = regex.captures(&repo).unwrap();
+                let mut url = "https://".to_string();
 
-                //let protocol = captures.name("protocol").unwrap().as_str().to_string();
-                let host = captures.name("host").unwrap().as_str().to_string();
-                let port = captures.name("port").unwrap().as_str().to_string();
-                //let path = captures.name("path").unwrap().as_str().to_string();
-                let repo = captures.name("repo").unwrap().as_str();
+                if captures.name("host").is_some() {
+                    url.push_str(captures.name("host").unwrap().as_str());
+                }
 
-                format!("https://{}/{}/{}", host, port, repo)
+                if captures.name("port").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("port").unwrap().as_str());
+                }
+
+                if captures.name("path").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                if captures.name("repo").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                url
             }
             Some(Repository::Object { url, .. }) => {
                 let url = url.unwrap();
                 let captures = regex.captures(&url).unwrap();
+                let mut url = "https://".to_string();
 
-                //let protocol = captures.name("protocol").unwrap().as_str().to_string();
-                let host = captures.name("host").unwrap().as_str().to_string();
-                let port = captures.name("port").unwrap().as_str().to_string();
-                //let path = captures.name("path").unwrap_or("").as_str().to_string();
-                let repo = captures.name("repo").unwrap().as_str();
+                if captures.name("host").is_some() {
+                    url.push_str(captures.name("host").unwrap().as_str());
+                }
 
-                format!("https://{}/{}/{}", host, port, repo)
+                if captures.name("port").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("port").unwrap().as_str());
+                }
+
+                if captures.name("path").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                if captures.name("repo").is_some() {
+                    url.push_str("/");
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                url
             }
             None => String::from("https://github.com/my-orga/my-repo"),
         }
+    }
+
+    pub fn validate_packages_json() -> Result<(), PackageJsonErrorEnum> {
+        let packages = Monorepo::get_packages();
+
+        for pkg in packages {
+            let pkg_json = serde_json::from_value::<PackageJson>(pkg.pkg_json).unwrap();
+
+            let name = pkg_json.name.unwrap_or(String::from("unknown"));
+            let version = pkg_json.version.unwrap_or(String::from("0"));
+
+            if name == "unknown" {
+                Err(PackageJsonErrorEnum::InvalidName("No valid name".to_string()))?;
+                panic!("Package name in package.json does not match the directory name");
+            }
+
+            if version == "0" {
+                Err(PackageJsonErrorEnum::InvalidVersion("No valid version".to_string()))?;
+                panic!("Package version in package.json does not match the directory version");
+            }
+        }
+
+        Ok(())
     }
 
     pub fn get_packages() -> Vec<PackageInfo> {

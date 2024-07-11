@@ -93,17 +93,17 @@ impl Monorepo {
                 }
 
                 if captures.name("port").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("port").unwrap().as_str());
                 }
 
                 if captures.name("path").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("repo").unwrap().as_str());
                 }
 
                 if captures.name("repo").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("repo").unwrap().as_str());
                 }
 
@@ -119,17 +119,17 @@ impl Monorepo {
                 }
 
                 if captures.name("port").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("port").unwrap().as_str());
                 }
 
                 if captures.name("path").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("repo").unwrap().as_str());
                 }
 
                 if captures.name("repo").is_some() {
-                    url.push_str("/");
+                    url.push('/');
                     url.push_str(captures.name("repo").unwrap().as_str());
                 }
 
@@ -149,7 +149,7 @@ impl Monorepo {
             let version = pkg_json.version.unwrap_or(String::from("0"));
             let description = pkg_json.description.unwrap_or(String::from("unknown"));
             let repository = pkg_json.repository.is_some();
-            let files = pkg_json.files.unwrap_or(vec![]);
+            let files = pkg_json.files.unwrap_or_default();
             let license = pkg_json.license.unwrap_or(String::from("unknown"));
 
             if name == "unknown" {

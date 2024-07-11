@@ -26,10 +26,7 @@ pub struct ConventionalPackage {
 #[napi(object)]
 #[derive(Debug, Clone)]
 pub struct ConventionalPackageOptions {
-    pub owner: Option<String>,
-    pub repo: Option<String>,
     pub version: Option<String>,
-    pub domain: Option<String>,
     pub title: Option<String>,
 }
 

@@ -5,11 +5,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::errors::PackageJsonErrorEnum;
 use crate::agent::manager::Agent;
 use crate::filesystem::paths::get_project_root_path;
 use crate::git::commands::Git;
 use execute::Execute;
-use package_json_schema::PackageJson;
+use package_json_schema::{PackageJson, Repository};
+use regex::Regex;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
@@ -37,6 +39,16 @@ pub struct PackageInfo {
     pub pkg_json: Value,
     pub root: bool,
     pub version: String,
+    pub url: String,
+    pub repository_info: Option<PackageRepositoryInfo>,
+}
+
+#[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct PackageRepositoryInfo {
+    pub domain: String,
+    pub orga: String,
+    pub project: String,
 }
 
 pub struct Monorepo;
@@ -51,6 +63,154 @@ impl Monorepo {
         let path = Path::new(&path);
 
         Agent::detect(&path)
+    }
+
+    pub fn get_package_repository_info(url: String) -> PackageRepositoryInfo {
+        let regex = Regex::new(r"(?m)((?<protocol>[a-z]+)://)((?<domain>[^/]*)/)(?<org>([^/]*)/)(?<project>(.*))(\.git)?").unwrap();
+
+        let captures = regex.captures(&url).unwrap();
+        let domain = captures.name("domain").unwrap().as_str();
+        let orga = captures.name("org").unwrap().as_str();
+        let project = captures.name("project").unwrap().as_str();
+
+        PackageRepositoryInfo {
+            domain: domain.to_string(),
+            orga: orga.to_string(),
+            project: project.to_string(),
+        }
+    }
+
+    pub fn format_repo_url(repo: Option<Repository>) -> String {
+        let regex = Regex::new(r"(?m)^((?<prefix>git[/+]))?((?<protocol>https?|ssh|git|ftps?)://)?((?<user>[^/@]+)@)?(?<host>[^/:]+)[/:](?<port>[^/:]+)/(?<path>.+/)?(?<repo>.+?)(?<suffix>\.git[/]?)?$").unwrap();
+
+        match repo {
+            Some(Repository::Path(repo)) => {
+                let captures = regex.captures(&repo).unwrap();
+                let mut url = "https://".to_string();
+
+                if captures.name("host").is_some() {
+                    url.push_str(captures.name("host").unwrap().as_str());
+                }
+
+                if captures.name("port").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("port").unwrap().as_str());
+                }
+
+                if captures.name("path").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                if captures.name("repo").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                url
+            }
+            Some(Repository::Object { url, .. }) => {
+                let url = url.unwrap();
+                let captures = regex.captures(&url).unwrap();
+                let mut url = "https://".to_string();
+
+                if captures.name("host").is_some() {
+                    url.push_str(captures.name("host").unwrap().as_str());
+                }
+
+                if captures.name("port").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("port").unwrap().as_str());
+                }
+
+                if captures.name("path").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                if captures.name("repo").is_some() {
+                    url.push('/');
+                    url.push_str(captures.name("repo").unwrap().as_str());
+                }
+
+                url
+            }
+            None => String::from("https://github.com/my-orga/my-repo"),
+        }
+    }
+
+    pub fn validate_packages_json() -> Result<bool, PackageJsonErrorEnum> {
+        let packages = Monorepo::get_packages();
+
+        for pkg in packages {
+            let pkg_json = serde_json::from_value::<PackageJson>(pkg.pkg_json).unwrap();
+
+            let name = pkg_json.name.unwrap_or(String::from("unknown"));
+            let version = pkg_json.version.unwrap_or(String::from("0"));
+            let description = pkg_json.description.unwrap_or(String::from("unknown"));
+            let repository = pkg_json.repository.is_some();
+            let files = pkg_json.files.unwrap_or_default();
+            let license = pkg_json.license.unwrap_or(String::from("unknown"));
+
+            if name == "unknown" {
+                Err(PackageJsonErrorEnum::InvalidName(
+                    "No valid name".to_string(),
+                ))?;
+                return Ok(false);
+            }
+
+            if version == "0" {
+                Err(PackageJsonErrorEnum::InvalidVersion(
+                    "No valid version".to_string(),
+                ))?;
+                return Ok(false);
+            }
+
+            if description == "unknown" {
+                Err(PackageJsonErrorEnum::InvalidDescription(
+                    "No valid description".to_string(),
+                ))?;
+                return Ok(false);
+            }
+
+            if !repository {
+                Err(PackageJsonErrorEnum::InvalidRepository(
+                    "No valid repository object".to_string(),
+                ))?;
+                return Ok(false);
+            }
+
+            if repository {
+                let repo = pkg_json.repository.unwrap();
+                let repo = match repo {
+                    Repository::Path(repo) => repo,
+                    Repository::Object { url, .. } => url.unwrap_or(String::from("")),
+                };
+
+                if repo.is_empty() {
+                    Err(PackageJsonErrorEnum::InvalidRepository(
+                        "No valid repository url".to_string(),
+                    ))?;
+                    return Ok(false);
+                }
+            }
+
+            if files.is_empty() {
+                Err(PackageJsonErrorEnum::InvalidFiles(
+                    "No valid files".to_string(),
+                ))?;
+                return Ok(false);
+            }
+
+            if license == "unknown" {
+                Err(PackageJsonErrorEnum::InvalidLicense(
+                    "No valid license".to_string(),
+                ))?;
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 
     pub fn get_packages() -> Vec<PackageInfo> {
@@ -91,6 +251,10 @@ impl Monorepo {
                             }
                         };
 
+                        let repo_url = Monorepo::format_repo_url(pkg_json.repository.clone());
+                        let repository_info =
+                            Monorepo::get_package_repository_info(repo_url.clone());
+
                         PackageInfo {
                             name: info.name.clone(),
                             private: info.private,
@@ -100,6 +264,8 @@ impl Monorepo {
                             pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: is_root,
                             version,
+                            url: repo_url,
+                            repository_info: Some(repository_info),
                         }
                     })
                     .collect::<Vec<PackageInfo>>()
@@ -164,6 +330,10 @@ impl Monorepo {
                         let name = pkg_json.name.clone().unwrap();
                         let version = pkg_json.version.clone().unwrap_or(String::from("0.0.0"));
 
+                        let repo_url = Monorepo::format_repo_url(pkg_json.repository.clone());
+                        let repository_info =
+                            Monorepo::get_package_repository_info(repo_url.clone());
+
                         let pkg_info = PackageInfo {
                             name,
                             private,
@@ -179,6 +349,8 @@ impl Monorepo {
                             pkg_json: serde_json::to_value(&pkg_json).unwrap(),
                             root: false,
                             version,
+                            url: repo_url,
+                            repository_info: Some(repository_info),
                         };
 
                         packages.push(pkg_info);
@@ -214,6 +386,8 @@ impl Monorepo {
                         pkg_json: pkg.pkg_json.clone(),
                         root: pkg.root,
                         version: pkg.version.clone(),
+                        url: pkg.url.clone(),
+                        repository_info: pkg.repository_info.clone(),
                     })
                     .collect::<Vec<PackageInfo>>();
 

@@ -14,7 +14,9 @@ use version_compare::{Cmp, Version};
 
 use crate::{
     filesystem::paths::get_project_root_path,
-    monorepo::{packages::PackageInfo, utils::package_scope_name_version},
+    monorepo::{
+        packages::PackageInfo, packages::PackageRepositoryInfo, utils::package_scope_name_version,
+    },
 };
 
 use super::conventional::{ConventionalPackage, ConventionalPackageOptions};
@@ -509,18 +511,22 @@ impl Git {
 
         let convention_options = match conventional_options {
             Some(options) => ConventionalPackageOptions {
-                owner: options.owner.or(Some(String::from("orga"))),
-                repo: options.repo.or(Some(String::from("tenant"))),
                 version: options.version.or(Some(String::from("0.0.0"))),
-                domain: options.domain.or(Some(String::from("https://github.com"))),
                 title: options.title,
             },
             None => ConventionalPackageOptions {
-                owner: Some(String::from("orga")),
-                repo: Some(String::from("tenant")),
                 version: Some(String::from("0.0.0")),
-                domain: Some(String::from("https://github.com")),
                 title: None,
+            },
+        };
+
+        let repo_info = package_info.repository_info.clone();
+        let repository_info = match repo_info {
+            Some(info) => info,
+            None => PackageRepositoryInfo {
+                orga: String::from("my-orga"),
+                project: String::from("my-repo"),
+                domain: String::from("https://github.com"),
             },
         };
 
@@ -531,15 +537,9 @@ impl Git {
         );
         let mut conventional_package = ConventionalPackage::new(package_info);
         let conventional_config = conventional_package.define_config(
-            convention_options
-                .owner
-                .expect("Owner repo needs to be defined"),
-            convention_options
-                .repo
-                .expect("Repo scope needs to be defined"),
-            convention_options
-                .domain
-                .expect("Github main domain url need to be defined"),
+            repository_info.orga,
+            repository_info.project,
+            repository_info.domain,
             convention_options.title,
             None,
         );

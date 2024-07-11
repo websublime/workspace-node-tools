@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2024-07-11
+
+### 🚀 Features
+
+- Method to format repo url
+
+### 🐛 Bug Fixes
+
+- Clippy suggestions and upgrade serde
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Maintenance format
+- Add repo url to package info
+- Append to url for creation and init package json validation
+- More options in package info
+- Merge pull request #11 from websublime/feature/repo-url
+- Bump version
+
 ## [0.7.1] - 2024-07-06
 
 ### 🐛 Bug Fixes

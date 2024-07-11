@@ -5,7 +5,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::PackageJsonErrorEnum;
 use crate::agent::manager::Agent;
 use crate::filesystem::paths::get_project_root_path;
 use crate::git::commands::Git;
@@ -139,7 +138,7 @@ impl Monorepo {
         }
     }
 
-    pub fn validate_packages_json() -> Result<bool, PackageJsonErrorEnum> {
+    pub fn validate_packages_json() -> bool {
         let packages = Monorepo::get_packages();
 
         for pkg in packages {
@@ -153,31 +152,19 @@ impl Monorepo {
             let license = pkg_json.license.unwrap_or(String::from("unknown"));
 
             if name == "unknown" {
-                Err(PackageJsonErrorEnum::InvalidName(
-                    "No valid name".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
 
             if version == "0" {
-                Err(PackageJsonErrorEnum::InvalidVersion(
-                    "No valid version".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
 
             if description == "unknown" {
-                Err(PackageJsonErrorEnum::InvalidDescription(
-                    "No valid description".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
 
             if !repository {
-                Err(PackageJsonErrorEnum::InvalidRepository(
-                    "No valid repository object".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
 
             if repository {
@@ -188,29 +175,20 @@ impl Monorepo {
                 };
 
                 if repo.is_empty() {
-                    Err(PackageJsonErrorEnum::InvalidRepository(
-                        "No valid repository url".to_string(),
-                    ))?;
-                    return Ok(false);
+                    return false;
                 }
             }
 
             if files.is_empty() {
-                Err(PackageJsonErrorEnum::InvalidFiles(
-                    "No valid files".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
 
             if license == "unknown" {
-                Err(PackageJsonErrorEnum::InvalidLicense(
-                    "No valid license".to_string(),
-                ))?;
-                return Ok(false);
+                return false;
             }
         }
 
-        Ok(true)
+        true
     }
 
     pub fn get_packages() -> Vec<PackageInfo> {

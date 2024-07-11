@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2024-07-11
+
+### 🐛 Bug Fixes
+
+- Package json validation changed to return boolean
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Maintenance version
+- Merge pull request #12 from websublime/fix/package-validation
+
 ## [0.8.0] - 2024-07-11
 
 ### 🚀 Features

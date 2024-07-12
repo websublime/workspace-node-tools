@@ -14,6 +14,7 @@ use git_cliff_core::{
 };
 use regex::Regex;
 
+#[cfg(feature = "napi")]
 #[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConventionalPackage {
@@ -23,7 +24,24 @@ pub struct ConventionalPackage {
     pub changelog_output: String,
 }
 
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ConventionalPackage {
+    pub package_info: PackageInfo,
+    pub conventional_config: Value,
+    pub conventional_commits: Value,
+    pub changelog_output: String,
+}
+
+#[cfg(feature = "napi")]
 #[napi(object)]
+#[derive(Debug, Clone)]
+pub struct ConventionalPackageOptions {
+    pub version: Option<String>,
+    pub title: Option<String>,
+}
+
+#[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone)]
 pub struct ConventionalPackageOptions {
     pub version: Option<String>,

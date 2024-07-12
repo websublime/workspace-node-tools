@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};
 
+#[cfg(feature = "napi")]
 #[napi(string_enum)]
 #[derive(Debug, PartialEq)]
 pub enum Agent {
@@ -9,7 +10,17 @@ pub enum Agent {
     Bun,
 }
 
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Agent {
+    Npm,
+    Yarn,
+    Pnpm,
+    Bun,
+}
+
 impl Agent {
+    /// Detects which package manager is available in the workspace.
     pub fn detect(path: &Path) -> Option<Agent> {
         let agent_files = HashMap::from([
             ("package-lock.json", Agent::Npm),

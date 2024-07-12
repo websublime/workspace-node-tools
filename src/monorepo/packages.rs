@@ -78,10 +78,12 @@ pub struct PackageRepositoryInfo {
 pub struct Monorepo;
 
 impl Monorepo {
+    /// Get monorepo root path.
     pub fn get_project_root_path() -> Option<String> {
         get_project_root_path()
     }
 
+    /// Get the package manager available in the workspace.
     pub fn get_agent() -> Option<Agent> {
         let path = Monorepo::get_project_root_path().unwrap();
         let path = Path::new(&path);
@@ -89,6 +91,7 @@ impl Monorepo {
         Agent::detect(&path)
     }
 
+    /// Get a desription list of packages available in the monorepo
     pub fn get_package_repository_info(url: String) -> PackageRepositoryInfo {
         let regex = Regex::new(r"(?m)((?<protocol>[a-z]+)://)((?<domain>[^/]*)/)(?<org>([^/]*)/)(?<project>(.*))(\.git)?").unwrap();
 
@@ -104,6 +107,7 @@ impl Monorepo {
         }
     }
 
+    /// Generates and format the url of the project
     pub fn format_repo_url(repo: Option<Repository>) -> String {
         let regex = Regex::new(r"(?m)^((?<prefix>git[/+]))?((?<protocol>https?|ssh|git|ftps?)://)?((?<user>[^/@]+)@)?(?<host>[^/:]+)[/:](?<port>[^/:]+)/(?<path>.+/)?(?<repo>.+?)(?<suffix>\.git[/]?)?$").unwrap();
 
@@ -163,6 +167,7 @@ impl Monorepo {
         }
     }
 
+    /// Validate the minimun config in packages.json files
     pub fn validate_packages_json() -> bool {
         let packages = Monorepo::get_packages();
 
@@ -216,6 +221,7 @@ impl Monorepo {
         true
     }
 
+    /// Get a list of packages available in the monorepo
     pub fn get_packages() -> Vec<PackageInfo> {
         return match Monorepo::get_agent() {
             Some(Agent::Pnpm) => {
@@ -367,6 +373,7 @@ impl Monorepo {
         };
     }
 
+    /// Get a list of packages that have changed since a given sha
     pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
         let packages = Monorepo::get_packages();
         let root = Monorepo::get_project_root_path();

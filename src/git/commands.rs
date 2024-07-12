@@ -77,9 +77,7 @@ pub struct PublishTagInfo {
 pub struct Git;
 
 impl Git {
-    /**
-     * Fetches all tracking information from origin.
-     */
+    /// Fetches all tracking information from origin.
     pub fn fetch_all(cwd: Option<String>) -> Result<bool, std::io::Error> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
@@ -100,10 +98,7 @@ impl Git {
         }
     }
 
-    /**
-     * Pulls in all tags from origin and forces local to be updated
-     * @param {string} [cwd=monorepo root]
-     */
+    /// Pulls in all tags from origin and forces local to be updated
     pub fn fetch_all_tags(cwd: Option<String>) -> Result<bool, std::io::Error> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
@@ -128,6 +123,7 @@ impl Git {
         }
     }
 
+    /// Get the diverged commit from a particular git SHA or tag.
     pub fn get_diverged_commit(refer: String, cwd: Option<String>) -> Option<String> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
@@ -150,11 +146,10 @@ impl Git {
         Some(output)
     }
 
-    /**
-     * Returns commits since a particular git SHA or tag.
-     * If the "since" parameter isn't provided, all commits
-     * from the dawn of man are returned
-     */
+
+    /// Returns commits since a particular git SHA or tag.
+    /// If the "since" parameter isn't provided, all commits
+    /// from the dawn of man are returned
     pub fn get_commits_since(
         cwd: Option<String>,
         since: Option<String>,
@@ -216,9 +211,7 @@ impl Git {
             .collect::<Vec<Commit>>()
     }
 
-    /**
-     * Grabs the full list of all tags available on upstream or local
-     */
+    /// Grabs the full list of all tags available on upstream or local
     pub fn get_remote_or_local_tags(cwd: Option<String>, local: Option<bool>) -> Vec<RemoteTags> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
@@ -267,6 +260,7 @@ impl Git {
             .collect::<Vec<RemoteTags>>()
     }
 
+    /// Grabs the last known publish tag info for a package
     pub fn get_last_known_publish_tag_info_for_package(
         package_info: PackageInfo,
         cwd: Option<String>,
@@ -380,9 +374,7 @@ impl Git {
         None
     }
 
-    /**
-     * Grabs the last known publish tag info for all packages in the monorepo
-     */
+    /// Grabs the last known publish tag info for all packages in the monorepo
     pub fn get_last_known_publish_tag_info_for_all_packages(
         package_info: Vec<PackageInfo>,
         cwd: Option<String>,
@@ -398,10 +390,8 @@ impl Git {
             .collect::<Vec<Option<PublishTagInfo>>>()
     }
 
-    /**
-     * Given a specific git sha, finds all files that have been modified
-     * since the sha and returns the absolute filepaths.
-     */
+    /// Given a specific git sha, finds all files that have been modified
+    /// since the sha and returns the absolute filepaths.
     pub fn git_all_files_changed_since_sha(sha: String, cwd: Option<String>) -> Vec<String> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.unwrap_or(working_dir);
@@ -435,11 +425,9 @@ impl Git {
             .collect::<Vec<String>>()
     }
 
-    /**
-     * Given an input of parsed git tag infos,
-     * returns all the files that have changed since any of these git tags
-     * have occured, with duplicates removed.
-     */
+    /// Given an input of parsed git tag infos,
+    /// returns all the files that have changed since any of these git tags
+    /// have occured, with duplicates removed.
     pub fn get_all_files_changed_since_tag_infos(
         package_info: Vec<PackageInfo>,
         tag_info: Vec<PublishTagInfo>,
@@ -478,10 +466,8 @@ impl Git {
         all_files
     }
 
-    /**
-     * Given an input of the "main" branch name,
-     * returns all the files that have changed since the current branch was created
-     */
+    /// Given an input of the "main" branch name,
+    /// returns all the files that have changed since the current branch was created
     pub fn get_all_files_changed_since_branch(
         package_info: Vec<PackageInfo>,
         branch: String,
@@ -516,6 +502,7 @@ impl Git {
     // git diff-tree --no-commit-id --name-only -r origin/main..HEAD
     // git --no-pager diff --name-only HEAD~1
 
+    /// Give info about commits in a package, generate changelog output
     pub fn get_conventional_for_package(
         package_info: PackageInfo,
         no_fetch_all: Option<bool>,
@@ -591,6 +578,7 @@ impl Git {
         conventional_package
     }
 
+    // Commit all changes in the monorepo
     pub fn git_commit(
         mut message: String,
         body: Option<String>,
@@ -637,6 +625,7 @@ impl Git {
         }
     }
 
+    /// Pushes all changes in the monorepo without verification
     pub fn git_push(cwd: Option<String>) -> Result<bool, std::io::Error> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);
@@ -658,6 +647,7 @@ impl Git {
         }
     }
 
+    /// Tags the current commit with a message
     pub fn git_tag(
         tag: String,
         message: Option<String>,
@@ -689,6 +679,7 @@ impl Git {
         }
     }
 
+    /// Get the current commit id
     pub fn git_current_sha(cwd: Option<String>) -> String {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);
@@ -706,6 +697,7 @@ impl Git {
         String::from_utf8(output.stdout).unwrap().trim().to_string()
     }
 
+    /// Verify if as uncopmmited changes in the current working directory
     pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);
@@ -729,6 +721,7 @@ impl Git {
         true
     }
 
+    /// Get the branch (last) name for a commit
     pub fn git_branch_from_commit(commit: String, cwd: Option<String>) -> Option<String> {
         let working_dir = get_project_root_path().unwrap();
         let current_working_dir = cwd.clone().unwrap_or(working_dir);

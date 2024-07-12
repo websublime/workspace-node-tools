@@ -10,6 +10,7 @@ pub struct PackageScopeMetadata {
     pub path: Option<String>,
 }
 
+/// Extracts the package scope name and version from a package name.
 pub fn package_scope_name_version(pkg_name: &str) -> Option<PackageScopeMetadata> {
     let regex = Regex::new("^((?:@[^/@]+/)?[^/@]+)(?:@([^/]+))?(/.*)?$").unwrap();
 

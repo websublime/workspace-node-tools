@@ -20,6 +20,7 @@ pub enum Agent {
 }
 
 impl Agent {
+    /// Detects which package manager is available in the workspace.
     pub fn detect(path: &Path) -> Option<Agent> {
         let agent_files = HashMap::from([
             ("package-lock.json", Agent::Npm),

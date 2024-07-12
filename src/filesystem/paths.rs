@@ -7,6 +7,7 @@ use std::{
     process::{Command, Stdio},
 };
 
+/// Get the project root path.
 pub fn get_project_root_path() -> Option<String> {
     let current_dir = env::current_dir().unwrap();
     let mut dir = walk_reverse_dir(current_dir.as_path());
@@ -33,6 +34,7 @@ pub fn get_project_root_path() -> Option<String> {
     dir
 }
 
+/// Walk reverse directory to find the root project.
 fn walk_reverse_dir(path: &path::Path) -> Option<String> {
     let current_path = path.to_path_buf();
     let map_files = vec![

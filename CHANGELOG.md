@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2024-07-12
+
+### 🚀 Features
+
+- Make napi and napi_derive optional features
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Maintenance format
+- Documenting functions and methods
+- Maintenance format
+- Merge pull request #13 from websublime/feature/cfg-features
+
 ## [0.8.1] - 2024-07-11
 
 ### 🐛 Bug Fixes

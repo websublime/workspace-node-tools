@@ -27,6 +27,7 @@ struct PkgJson {
     workspaces: Vec<String>,
 }
 
+#[cfg(feature = "napi")]
 #[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct PackageInfo {
@@ -42,7 +43,31 @@ pub struct PackageInfo {
     pub repository_info: Option<PackageRepositoryInfo>,
 }
 
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct PackageInfo {
+    pub name: String,
+    pub private: bool,
+    pub package_json_path: String,
+    pub package_path: String,
+    pub package_relative_path: String,
+    pub pkg_json: Value,
+    pub root: bool,
+    pub version: String,
+    pub url: String,
+    pub repository_info: Option<PackageRepositoryInfo>,
+}
+
+#[cfg(feature = "napi")]
 #[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct PackageRepositoryInfo {
+    pub domain: String,
+    pub orga: String,
+    pub project: String,
+}
+
+#[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct PackageRepositoryInfo {
     pub domain: String,

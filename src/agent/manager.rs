@@ -1,7 +1,17 @@
 use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};
 
+#[cfg(feature = "napi")]
 #[napi(string_enum)]
 #[derive(Debug, PartialEq)]
+pub enum Agent {
+    Npm,
+    Yarn,
+    Pnpm,
+    Bun,
+}
+
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Agent {
     Npm,
     Yarn,

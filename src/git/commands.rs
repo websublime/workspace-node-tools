@@ -21,6 +21,7 @@ use crate::{
 
 use super::conventional::{ConventionalPackage, ConventionalPackageOptions};
 
+#[cfg(feature = "napi")]
 #[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Commit {
@@ -31,6 +32,17 @@ pub struct Commit {
     pub message: String,
 }
 
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Commit {
+    pub hash: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_date: String,
+    pub message: String,
+}
+
+#[cfg(feature = "napi")]
 #[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RemoteTags {
@@ -38,7 +50,23 @@ pub struct RemoteTags {
     pub tag: String,
 }
 
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RemoteTags {
+    pub hash: String,
+    pub tag: String,
+}
+
+#[cfg(feature = "napi")]
 #[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PublishTagInfo {
+    pub hash: String,
+    pub tag: String,
+    pub package: String,
+}
+
+#[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PublishTagInfo {
     pub hash: String,
@@ -699,5 +727,37 @@ impl Git {
         }
 
         true
+    }
+
+    pub fn git_branch_from_commit(commit: String, cwd: Option<String>) -> Option<String> {
+        let working_dir = get_project_root_path().unwrap();
+        let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+        // git --no-pager branch --no-color --no-column --format "%(refname:lstrip=2)" --contains <commit>
+        let mut command = Command::new("git");
+        command
+            .arg("--no-pager")
+            .arg("branch")
+            .arg("--no-color")
+            .arg("--no-column")
+            .arg("--format")
+            .arg(r#""%(refname:lstrip=2)""#)
+            .arg("--contains")
+            .arg(commit);
+
+        command.current_dir(current_working_dir.clone());
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.execute_output().unwrap();
+
+        let output = String::from_utf8(output.stdout).unwrap();
+
+        if output.trim().is_empty() {
+            return None;
+        }
+
+        Some(output.trim().split("\n").last().unwrap_or_default().to_string())
     }
 }

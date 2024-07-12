@@ -146,7 +146,6 @@ impl Git {
         Some(output)
     }
 
-
     /// Returns commits since a particular git SHA or tag.
     /// If the "since" parameter isn't provided, all commits
     /// from the dawn of man are returned

@@ -758,6 +758,13 @@ impl Git {
             return None;
         }
 
-        Some(output.trim().split("\n").last().unwrap_or_default().to_string())
+        Some(
+            output
+                .trim()
+                .split("\n")
+                .last()
+                .unwrap_or_default()
+                .to_string(),
+        )
     }
 }

@@ -4,7 +4,6 @@
 //! It allows you to retrieve information about the workspace, and to interact with the workspace.
 #[allow(unused_imports)]
 #[macro_use]
-
 #[cfg(feature = "napi-derive")]
 extern crate napi_derive;
 

@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use package_json_schema::{PackageJson, Repository};
+use wax::{CandidatePath, Glob, Pattern};
 use regex::Regex;
 
 use super::manager::{PackageManager, detect_package_manager};
@@ -14,6 +15,11 @@ struct PnpmInfo {
     name: String,
     path: String,
     private: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct PkgJson {
+    workspaces: Vec<String>,
 }
 
 #[cfg(feature = "napi")]
@@ -210,7 +216,95 @@ pub fn get_packages() -> Vec<PackageInfo> {
                 })
                 .collect::<Vec<PackageInfo>>()
         }
-        Some(PackageManager::Yarn) | Some(PackageManager::Npm) => vec![],
+        Some(PackageManager::Yarn) | Some(PackageManager::Npm) => {
+            let path = Path::new(&project_root);
+            let package_json = path.join("package.json");
+            let mut packages = vec![];
+
+            let package_json = std::fs::read_to_string(&package_json).unwrap();
+
+            let PkgJson { mut workspaces, .. } =
+                serde_json::from_str::<PkgJson>(&package_json).unwrap();
+
+            let globs = workspaces
+                .iter_mut()
+                .map(|workspace| {
+                    return match workspace.ends_with("/*") {
+                        true => {
+                            workspace.push_str("*/package.json");
+                            Glob::new(workspace).unwrap()
+                        }
+                        false => {
+                            workspace.push_str("/package.json");
+                            Glob::new(workspace).unwrap()
+                        }
+                    };
+                })
+                .collect::<Vec<Glob>>();
+
+            let patterns = wax::any(globs).unwrap();
+
+            let glob = Glob::new("**/package.json").unwrap();
+
+            for entry in glob
+                .walk(path)
+                .not([
+                    "**/node_modules/**",
+                    "**/src/**",
+                    "**/dist/**",
+                    "**/tests/**",
+                ])
+                .unwrap()
+            {
+                let entry = entry.unwrap();
+                let mut rel_path = entry
+                    .path()
+                    .strip_prefix(&path)
+                    .unwrap()
+                    .display()
+                    .to_string();
+                rel_path.remove(0);
+
+                if patterns.is_match(CandidatePath::from(
+                    entry.path().strip_prefix(&path).unwrap(),
+                )) {
+                    let package_json = std::fs::read_to_string(&entry.path()).unwrap();
+                    let pkg_json = PackageJson::try_from(package_json).unwrap();
+                    let private = matches!(pkg_json.private, Some(package_json_schema::Private::True));
+
+                    let package_json = serde_json::to_value(&pkg_json).unwrap();
+
+                    let repo_url = format_repo_url(&pkg_json.repository);
+                    let repository_info = get_package_repository_info(&repo_url);
+
+                    let name = &pkg_json.name.unwrap().to_string();
+                    let version = &pkg_json.version.unwrap_or(String::from("0.0.0"));
+
+                    let pkg_info = PackageInfo {
+                        name: name.to_string(),
+                        private,
+                        package_json_path: entry.path().to_str().unwrap().to_string(),
+                        package_path: entry
+                            .path()
+                            .parent()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_string(),
+                        package_relative_path: rel_path,
+                        pkg_json: package_json,
+                        root: false,
+                        version: version.to_string(),
+                        url: repo_url,
+                        repository_info: Some(repository_info),
+                    };
+
+                    packages.push(pkg_info);
+                }
+            }
+
+            packages
+        },
         Some(PackageManager::Bun) => vec![],
         None => vec![],
     };

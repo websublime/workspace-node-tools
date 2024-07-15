@@ -10,3 +10,5 @@ extern crate napi_derive;
 pub mod manager;
 
 pub mod paths;
+
+pub mod git;

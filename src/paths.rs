@@ -2,11 +2,12 @@
 #![allow(clippy::useless_vec)]
 
 //! #Paths module
-//! 
+//!
 //! The `paths` module is used to get the project root path.
 use execute::Execute;
 use std::{
-    env, path::{PathBuf, Path},
+    env,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -16,7 +17,7 @@ pub fn get_project_root_path() -> Option<String> {
 
     let current_dir = match env_dir {
         Ok(dir) => dir,
-        _ => PathBuf::from("./")
+        _ => PathBuf::from("./"),
     };
     let current_path = current_dir.as_path();
 
@@ -33,7 +34,7 @@ pub fn get_project_root_path() -> Option<String> {
     Some(project_root)
 }
 
-// Get the git root directory.
+/// Get the git root directory.
 fn get_git_root_dir(dir: &Path) -> Option<String> {
     let mut command = Command::new("git");
     command.arg("rev-parse").arg("--show-toplevel");
@@ -46,8 +47,8 @@ fn get_git_root_dir(dir: &Path) -> Option<String> {
     let output = command.execute_output().unwrap();
 
     if output.status.success() {
-       let output = String::from_utf8(output.stdout).unwrap();
-       return Some(output.trim().to_string()); 
+        let output = String::from_utf8(output.stdout).unwrap();
+        return Some(output.trim().to_string());
     }
 
     None
@@ -83,7 +84,7 @@ fn walk_reverse_dir(path: &Path) -> Option<String> {
 mod tests {
     use super::*;
 
-    use std::fs::{rename, remove_file, File};
+    use std::fs::{remove_file, rename, File};
     use std::path::Path;
 
     fn create_agent_file(path: &Path) -> File {

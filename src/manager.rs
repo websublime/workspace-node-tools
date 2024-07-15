@@ -1,5 +1,5 @@
 //! # Package Manager
-//! 
+//!
 //! This package ables to detect which package manager is being used in the monorepo.
 
 use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};

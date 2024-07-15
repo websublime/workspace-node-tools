@@ -14,3 +14,5 @@ pub mod manager;
 pub mod paths;
 
 pub mod git;
+
+pub mod packages;

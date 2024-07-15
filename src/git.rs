@@ -1,13 +1,35 @@
-use super::paths::get_project_root_path;
-use super::utils::strip_trailing_newline;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
-
 use execute::Execute;
 use std::{
     env::temp_dir,
     fs::{remove_file, File},
     process::{Command, Stdio},
 };
+
+use super::paths::get_project_root_path;
+use super::utils::strip_trailing_newline;
+
+#[cfg(feature = "napi")]
+#[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Commit {
+    pub hash: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_date: String,
+    pub message: String,
+}
+
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Commit {
+    pub hash: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_date: String,
+    pub message: String,
+}
 
 pub fn git_fetch_all(
     cwd: Option<String>,
@@ -263,6 +285,70 @@ pub fn git_commit(
     }
 }
 
+/// Returns commits since a particular git SHA or tag.
+/// If the "since" parameter isn't provided, all commits
+/// from the dawn of man are returned
+pub fn get_commits_since(
+    cwd: Option<String>,
+    since: Option<String>,
+    relative: Option<String>,
+) -> Vec<Commit> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = cwd.unwrap_or(working_dir);
+
+    const DELIMITER: &str = r#"#=#"#;
+    const BREAK_LINE: &str = r#"#+#"#;
+
+    let mut command = Command::new("git");
+    command
+        .arg("--no-pager")
+        .arg("log")
+        .arg(format!(
+            "--format={}%H{}%an{}%ae{}%ad{}%B{}",
+            DELIMITER, DELIMITER, DELIMITER, DELIMITER, DELIMITER, BREAK_LINE
+        ))
+        .arg("--date=rfc2822");
+
+    if let Some(since) = since {
+        command.arg(format!("{}..", since));
+    }
+
+    if let Some(relative) = relative {
+        command.arg("--");
+        command.arg(&relative);
+    }
+
+    command.current_dir(&current_working_dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    if !output.status.success() {
+        return vec![];
+    }
+
+    let output = String::from_utf8(output.stdout).unwrap();
+
+    output
+        .split(BREAK_LINE)
+        .filter(|item| !item.trim().is_empty())
+        .map(|item| {
+            let item_trimmed = item.trim();
+            let items = item_trimmed.split(DELIMITER).collect::<Vec<&str>>();
+
+            Commit {
+                hash: items.get(1).unwrap().to_string(),
+                author_name: items.get(2).unwrap().to_string(),
+                author_email: items.get(3).unwrap().to_string(),
+                author_date: items.get(4).unwrap().to_string(),
+                message: items.get(5).unwrap().to_string(),
+            }
+        })
+        .collect::<Vec<Commit>>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,5 +388,12 @@ mod tests {
         let commit = git_current_sha(None);
         let result = git_branch_from_commit(commit, None);
         assert_eq!(result.is_some(), true);
+    }
+
+    #[test]
+    fn test_get_commits_since() {
+    		let result = get_commits_since(None, Some(String::from("main")), Some(String::from("packages/package-a")));
+				assert_eq!(false, false);
+				dbg!(result);
     }
 }

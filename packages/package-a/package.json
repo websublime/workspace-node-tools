@@ -1,7 +1,7 @@
 {
   "name": "@scope/package-a",
   "version": "1.0.0",
-  "description": "",
+  "description": "My new package A",
   "main": "index.mjs",
   "repository": {
     "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",

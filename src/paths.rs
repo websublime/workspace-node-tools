@@ -1,41 +1,60 @@
 #![allow(clippy::unwrap_or_default)]
 #![allow(clippy::useless_vec)]
 
+//! #Paths module
+//! 
+//! The `paths` module is used to get the project root path.
 use execute::Execute;
 use std::{
-    env, path,
+    env, path::{PathBuf, Path},
     process::{Command, Stdio},
 };
 
 /// Get the project root path.
 pub fn get_project_root_path() -> Option<String> {
-    let current_dir = env::current_dir().unwrap();
-    let mut dir = walk_reverse_dir(current_dir.as_path());
+    let env_dir = env::current_dir();
 
-    if dir.is_none() {
-        let mut command = Command::new("git");
-        command.arg("rev-parse").arg("--show-toplevel");
+    let current_dir = match env_dir {
+        Ok(dir) => dir,
+        _ => PathBuf::from("./")
+    };
+    let current_path = current_dir.as_path();
 
-        command.current_dir(current_dir.clone());
+    let git_root_dir = get_git_root_dir(&current_path);
 
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-
-        let output = command.execute_output().unwrap();
-
-        if !output.status.success() {
-            dir = Some(current_dir.to_str().unwrap().to_string());
-        } else {
-            let output = String::from_utf8(output.stdout).unwrap();
-            dir = Some(output.trim().to_string());
+    let project_root = match git_root_dir {
+        Some(current) => current,
+        None => {
+            let search_root = walk_reverse_dir(&current_path);
+            search_root.unwrap_or(current_path.to_str().unwrap().to_string())
         }
+    };
+
+    Some(project_root)
+}
+
+// Get the git root directory.
+fn get_git_root_dir(dir: &Path) -> Option<String> {
+    let mut command = Command::new("git");
+    command.arg("rev-parse").arg("--show-toplevel");
+
+    command.current_dir(dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    if output.status.success() {
+       let output = String::from_utf8(output.stdout).unwrap();
+       return Some(output.trim().to_string()); 
     }
 
-    dir
+    None
 }
 
 /// Walk reverse directory to find the root project.
-fn walk_reverse_dir(path: &path::Path) -> Option<String> {
+fn walk_reverse_dir(path: &Path) -> Option<String> {
     let current_path = path.to_path_buf();
     let map_files = vec![
         ("package-lock.json", "npm"),
@@ -64,7 +83,7 @@ fn walk_reverse_dir(path: &path::Path) -> Option<String> {
 mod tests {
     use super::*;
 
-    use std::fs::{remove_file, File};
+    use std::fs::{rename, remove_file, File};
     use std::path::Path;
 
     fn create_agent_file(path: &Path) -> File {
@@ -75,11 +94,18 @@ mod tests {
         remove_file(path).expect("File not deleted");
     }
 
+    fn git_dir_rename(from: &Path, to: &Path) {
+        rename(from, to).expect("Rename dir");
+    }
+
     #[test]
     fn npm_root_project() {
         let path = std::env::current_dir().expect("Current user home directory");
         let npm_lock = path.join("package-lock.json");
+        let git_home = path.join(".git");
+        let no_git = path.join(".no_git");
 
+        git_dir_rename(&git_home, &no_git);
         create_agent_file(&npm_lock);
 
         let project_root = get_project_root_path();
@@ -87,13 +113,17 @@ mod tests {
         assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
 
         delete_agent_file(&npm_lock);
+        git_dir_rename(&no_git, &git_home);
     }
 
     #[test]
     fn yarn_root_project() {
         let path = std::env::current_dir().expect("Current user home directory");
         let yarn_lock = path.join("yarn.lock");
+        let git_home = path.join(".git");
+        let no_git = path.join(".no_git");
 
+        git_dir_rename(&git_home, &no_git);
         create_agent_file(&yarn_lock);
 
         let project_root = get_project_root_path();
@@ -101,13 +131,17 @@ mod tests {
         assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
 
         delete_agent_file(&yarn_lock);
+        git_dir_rename(&no_git, &git_home);
     }
 
     #[test]
     fn pnpm_root_project() {
         let path = std::env::current_dir().expect("Current user home directory");
         let pnpm_lock = path.join("pnpm-lock.yaml");
+        let git_home = path.join(".git");
+        let no_git = path.join(".no_git");
 
+        git_dir_rename(&git_home, &no_git);
         create_agent_file(&pnpm_lock);
 
         let project_root = get_project_root_path();
@@ -115,13 +149,17 @@ mod tests {
         assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
 
         delete_agent_file(&pnpm_lock);
+        git_dir_rename(&no_git, &git_home);
     }
 
     #[test]
     fn bun_root_project() {
         let path = std::env::current_dir().expect("Current user home directory");
         let bun_lock = path.join("bun.lockb");
+        let git_home = path.join(".git");
+        let no_git = path.join(".no_git");
 
+        git_dir_rename(&git_home, &no_git);
         create_agent_file(&bun_lock);
 
         let project_root = get_project_root_path();
@@ -129,6 +167,7 @@ mod tests {
         assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
 
         delete_agent_file(&bun_lock);
+        git_dir_rename(&no_git, &git_home);
     }
 
     #[test]

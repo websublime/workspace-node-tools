@@ -7,22 +7,6 @@
 #[cfg(feature = "napi-derive")]
 extern crate napi_derive;
 
-// # Agent
-//
-/// The agent module provides which package manager is available in the workspace.
-pub mod agent;
+pub mod manager;
 
-// # Filesystem
-//
-/// The filesystem module provides utilities to work with the filesystem.
-pub mod filesystem;
-
-// # Git
-//
-/// The git module provides utilities to work with git.
-pub mod git;
-
-// # Monorepo
-//
-/// The monorepo module provides utilities to work with monorepos.
-pub mod monorepo;
+pub mod paths;

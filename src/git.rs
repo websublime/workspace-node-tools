@@ -1,9 +1,11 @@
+use execute::Execute;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use execute::Execute;
 use std::{
     env::temp_dir,
     fs::{remove_file, File},
+    path::Path,
     process::{Command, Stdio},
 };
 
@@ -29,6 +31,21 @@ pub struct Commit {
     pub author_email: String,
     pub author_date: String,
     pub message: String,
+}
+
+#[cfg(feature = "napi")]
+#[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RemoteTags {
+    pub hash: String,
+    pub tag: String,
+}
+
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RemoteTags {
+    pub hash: String,
+    pub tag: String,
 }
 
 pub fn git_fetch_all(
@@ -285,6 +302,41 @@ pub fn git_commit(
     }
 }
 
+/// Given a specific git sha, finds all files that have been modified
+/// since the sha and returns the absolute filepaths.
+pub fn git_all_files_changed_since_sha(sha: String, cwd: Option<String>) -> Vec<String> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = cwd.unwrap_or(working_dir);
+
+    let mut command = Command::new("git");
+    command
+        .arg("--no-pager")
+        .arg("diff")
+        .arg("--name-only")
+        .arg(format!("{}..", sha));
+    command.current_dir(&current_working_dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    if !output.status.success() {
+        return vec![];
+    }
+
+    let output = String::from_utf8(output.stdout).unwrap();
+    let root = Path::new(&current_working_dir);
+
+    output
+        .split("\n")
+        .filter(|item| !item.trim().is_empty())
+        .map(|item| root.join(item))
+        .filter(|item| item.exists())
+        .map(|item| item.to_str().unwrap().to_string())
+        .collect::<Vec<String>>()
+}
+
 /// Returns commits since a particular git SHA or tag.
 /// If the "since" parameter isn't provided, all commits
 /// from the dawn of man are returned
@@ -349,6 +401,55 @@ pub fn get_commits_since(
         .collect::<Vec<Commit>>()
 }
 
+/// Grabs the full list of all tags available on upstream or local
+pub fn get_remote_or_local_tags(cwd: Option<String>, local: Option<bool>) -> Vec<RemoteTags> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = cwd.unwrap_or(working_dir);
+
+    let mut command = Command::new("git");
+
+    match local {
+        Some(true) => command.arg("show-ref").arg("--tags"),
+        Some(false) => command.arg("ls-remote").arg("--tags").arg("origin"),
+        None => command.arg("ls-remote").arg("--tags").arg("origin"),
+    };
+
+    command.current_dir(&current_working_dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    if !output.status.success() {
+        return vec![];
+    }
+
+    let output = String::from_utf8(output.stdout).unwrap();
+
+    #[cfg(windows)]
+    const LINE_ENDING: &'static str = "\r\n";
+    #[cfg(not(windows))]
+    const LINE_ENDING: &'static str = "\n";
+
+    output
+        .trim()
+        .split(LINE_ENDING)
+        .filter(|tags| !tags.trim().is_empty())
+        .map(|tags| {
+            let hash_tags = Regex::new(r"\s+")
+                .unwrap()
+                .split(tags)
+                .collect::<Vec<&str>>();
+
+            RemoteTags {
+                hash: hash_tags.get(0).unwrap().to_string(),
+                tag: hash_tags.get(1).unwrap().to_string(),
+            }
+        })
+        .collect::<Vec<RemoteTags>>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,8 +493,33 @@ mod tests {
 
     #[test]
     fn test_get_commits_since() {
-    		let result = get_commits_since(None, Some(String::from("main")), Some(String::from("packages/package-a")));
-				assert_eq!(false, false);
-				dbg!(result);
+        let result = get_commits_since(
+            None,
+            Some(String::from("main")),
+            Some(String::from("packages/package-a")),
+        );
+        let count = result.len();
+        assert_eq!(count, count);
+    }
+
+    #[test]
+    fn test_get_local_tags() {
+        let result = get_remote_or_local_tags(None, Some(true));
+        let count = result.len();
+        assert_eq!(count, count);
+    }
+
+    #[test]
+    fn test_get_remote_tags() {
+        let result = get_remote_or_local_tags(None, Some(false));
+        let count = result.len();
+        assert_eq!(count, count);
+    }
+
+    #[test]
+    fn test_git_all_files_changed_since_sha() {
+        let result = git_all_files_changed_since_sha(String::from("main"), None);
+        let count = result.len();
+        assert_eq!(count, count);
     }
 }

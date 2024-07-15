@@ -1,25 +1,25 @@
 use execute::Execute;
+use package_json_schema::{PackageJson, Repository};
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde::{Serialize, Deserialize};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use package_json_schema::{PackageJson, Repository};
 use wax::{CandidatePath, Glob, Pattern};
-use regex::Regex;
 
-use super::manager::{PackageManager, detect_package_manager};
+use super::manager::{detect_package_manager, PackageManager};
 use super::paths::get_project_root_path;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PnpmInfo {
-    name: String,
-    path: String,
-    private: bool,
+    pub name: String,
+    pub path: String,
+    pub private: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PkgJson {
-    workspaces: Vec<String>,
+    pub workspaces: Vec<String>,
 }
 
 #[cfg(feature = "napi")]
@@ -71,7 +71,10 @@ pub struct PackageRepositoryInfo {
 }
 
 fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
-    let regex = Regex::new(r"(?m)((?<protocol>[a-z]+)://)((?<domain>[^/]*)/)(?<org>([^/]*)/)(?<project>(.*))(\.git)?").unwrap();
+    let regex = Regex::new(
+        r"(?m)((?<protocol>[a-z]+)://)((?<domain>[^/]*)/)(?<org>([^/]*)/)(?<project>(.*))(\.git)?",
+    )
+    .unwrap();
 
     let captures = regex.captures(url).unwrap();
     let domain = captures.name("domain").unwrap().as_str();
@@ -160,6 +163,13 @@ pub fn get_packages() -> Vec<PackageInfo> {
 
     return match package_manager {
         Some(PackageManager::Pnpm) => {
+            let path = Path::new(&project_root);
+            let pnpm_workspace = path.join("pnpm-workspace.yaml");
+
+            if !pnpm_workspace.as_path().exists() {
+                panic!("pnpm-workspace.yaml file not found");
+            }
+
             let mut command = Command::new("pnpm");
             command
                 .arg("list")
@@ -172,9 +182,8 @@ pub fn get_packages() -> Vec<PackageInfo> {
             command.stderr(Stdio::piped());
 
             let output = command.execute_output().unwrap();
-            let output = String::from_utf8(output.stdout).unwrap();
-
-            let pnpm_info = serde_json::from_str::<Vec<PnpmInfo>>(&output).unwrap();
+            let pnpm_info =
+                serde_json::from_slice::<Vec<PnpmInfo>>(&output.stdout.as_slice()).unwrap();
 
             pnpm_info
                 .iter()
@@ -187,7 +196,8 @@ pub fn get_packages() -> Vec<PackageInfo> {
                     let relative_path = match is_root {
                         true => String::from("."),
                         false => {
-                            let mut rel = info.path.strip_prefix(&project_root).unwrap().to_string();
+                            let mut rel =
+                                info.path.strip_prefix(&project_root).unwrap().to_string();
                             rel.remove(0);
                             rel
                         }
@@ -270,7 +280,8 @@ pub fn get_packages() -> Vec<PackageInfo> {
                 )) {
                     let package_json = std::fs::read_to_string(&entry.path()).unwrap();
                     let pkg_json = PackageJson::try_from(package_json).unwrap();
-                    let private = matches!(pkg_json.private, Some(package_json_schema::Private::True));
+                    let private =
+                        matches!(pkg_json.private, Some(package_json_schema::Private::True));
 
                     let package_json = serde_json::to_value(&pkg_json).unwrap();
 
@@ -284,13 +295,7 @@ pub fn get_packages() -> Vec<PackageInfo> {
                         name: name.to_string(),
                         private,
                         package_json_path: entry.path().to_str().unwrap().to_string(),
-                        package_path: entry
-                            .path()
-                            .parent()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .to_string(),
+                        package_path: entry.path().parent().unwrap().to_str().unwrap().to_string(),
                         package_relative_path: rel_path,
                         pkg_json: package_json,
                         root: false,
@@ -304,8 +309,129 @@ pub fn get_packages() -> Vec<PackageInfo> {
             }
 
             packages
-        },
+        }
         Some(PackageManager::Bun) => vec![],
         None => vec![],
     };
+}
+
+/// Get a list of packages that have changed since a given sha
+/*pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
+    let packages = get_packages();
+    let root = get_project_root_path();
+    let since = sha.unwrap_or(String::from("main"));
+
+    let changed_files = get_all_files_changed_since_branch(packages.clone(), since, root);
+
+    packages
+        .iter()
+        .flat_map(|pkg| {
+            let mut pkgs = changed_files
+                .iter()
+                .filter(|file| file.starts_with(&pkg.package_path))
+                .map(|_file| PackageInfo {
+                    name: pkg.name.clone(),
+                    private: pkg.private,
+                    package_json_path: pkg.package_json_path.clone(),
+                    package_path: pkg.package_path.clone(),
+                    package_relative_path: pkg.package_relative_path.clone(),
+                    pkg_json: pkg.pkg_json.clone(),
+                    root: pkg.root,
+                    version: pkg.version.clone(),
+                    url: pkg.url.clone(),
+                    repository_info: pkg.repository_info.clone(),
+                })
+                .collect::<Vec<PackageInfo>>();
+
+            pkgs.dedup_by(|a, b| a.name == b.name);
+
+            pkgs
+        })
+        .collect::<Vec<PackageInfo>>()
+}*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{remove_file, File};
+    use std::io::Write;
+
+    fn create_file(path: &Path) -> File {
+        File::create(path).expect("File not created")
+    }
+
+    fn delete_file(path: &Path) {
+        remove_file(path).expect("File not deleted");
+    }
+
+    fn create_root_package_json(path: &Path) {
+        let mut file = File::create(path).expect("File not created");
+        file.write(
+            r#"
+        {
+            "name": "@scope/root",
+            "version": "0.0.0",
+            "workspaces": [
+                "packages/package-a",
+                "packages/package-b"
+            ]
+        }"#
+            .as_bytes(),
+        )
+        .expect("File not written");
+    }
+
+    fn create_pnpm_workspace(path: &Path) {
+        let mut file = File::create(path).expect("File not created");
+        file.write(
+            r#"
+            packages:
+                - "packages/*"
+        "#
+            .as_bytes(),
+        )
+        .expect("File not written");
+    }
+
+    #[test]
+    fn pnpm_get_packages() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let pnpm_lock = path.join("pnpm-lock.yaml");
+        let pnpm_workspace = path.join("pnpm-workspace.yaml");
+
+        create_file(&pnpm_lock);
+        create_pnpm_workspace(&pnpm_workspace);
+
+        let packages = get_packages();
+
+        let pkg_a = packages.first().unwrap();
+        let pkg_b = packages.last().unwrap();
+
+        assert_eq!(pkg_a.name, "@scope/package-a");
+        assert_eq!(pkg_b.name, "@scope/package-b");
+
+        delete_file(&pnpm_lock);
+        delete_file(&pnpm_workspace);
+    }
+
+    #[test]
+    fn npm_get_packages() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let npm_lock = path.join("package-lock.json");
+        let package_json = path.join("package.json");
+
+        create_file(&npm_lock);
+        create_root_package_json(&package_json);
+
+        let packages = get_packages();
+
+        let pkg_a = packages.first().unwrap();
+        let pkg_b = packages.last().unwrap();
+
+        assert_eq!(pkg_a.name, "@scope/package-a");
+        assert_eq!(pkg_b.name, "@scope/package-b");
+
+        delete_file(&npm_lock);
+        delete_file(&package_json);
+    }
 }

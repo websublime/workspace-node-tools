@@ -1,3 +1,6 @@
+//! # Git
+//!
+//! This module provides a set of functions to interact with git.
 use execute::Execute;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -160,6 +163,31 @@ pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
     }
 
     true
+}
+
+/// Get the current branch name
+pub fn git_current_branch(cwd: Option<String>) -> Option<String> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = cwd.clone().unwrap_or(working_dir);
+
+    let mut command = Command::new("git");
+    command.arg("rev-parse").arg("--abbrev-ref").arg("HEAD");
+
+    command.current_dir(&current_working_dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    let output = String::from_utf8(output.stdout).unwrap();
+    let result = strip_trailing_newline(&output);
+
+    if result.is_empty() {
+        return None;
+    }
+
+    Some(result)
 }
 
 /// Get the branch (last) name for a commit
@@ -462,7 +490,7 @@ mod tests {
 
     #[test]
     fn test_get_diverged_commit() {
-        let result = get_diverged_commit("main".to_string(), None);
+        let result = get_diverged_commit(String::from("main"), None);
         assert_eq!(result.is_some(), true);
     }
 

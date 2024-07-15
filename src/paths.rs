@@ -4,6 +4,7 @@
 //! #Paths module
 //!
 //! The `paths` module is used to get the project root path.
+use super::utils::strip_trailing_newline;
 use execute::Execute;
 use std::{
     env,
@@ -48,7 +49,7 @@ fn get_git_root_dir(dir: &Path) -> Option<String> {
 
     if output.status.success() {
         let output = String::from_utf8(output.stdout).unwrap();
-        return Some(output.trim().to_string());
+        return Some(strip_trailing_newline(&output));
     }
 
     None

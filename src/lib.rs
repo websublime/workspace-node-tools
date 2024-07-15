@@ -7,6 +7,8 @@
 #[cfg(feature = "napi-derive")]
 extern crate napi_derive;
 
+mod utils;
+
 pub mod manager;
 
 pub mod paths;

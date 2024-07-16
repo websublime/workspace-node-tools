@@ -12,6 +12,7 @@ use std::{
     process::{Command, Stdio},
 };
 
+use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
 use super::utils::strip_trailing_newline;
 
@@ -476,6 +477,40 @@ pub fn get_remote_or_local_tags(cwd: Option<String>, local: Option<bool>) -> Vec
             }
         })
         .collect::<Vec<RemoteTags>>()
+}
+
+/// Given an input of the "main" branch name,
+/// returns all the files that have changed since the current branch was created
+pub fn get_all_files_changed_since_branch(
+    package_info: &Vec<PackageInfo>,
+    branch: &String,
+    cwd: Option<String>,
+) -> Vec<String> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = cwd.unwrap_or(working_dir);
+
+    let mut all_files = vec![];
+
+    package_info.iter().for_each(|item| {
+        let files = git_all_files_changed_since_sha(
+            branch.to_string(),
+            Some(current_working_dir.to_string()),
+        );
+
+        let pkg_files = files
+            .iter()
+            .filter(|file| file.starts_with(item.package_path.as_str()))
+            .collect::<Vec<&String>>();
+
+        all_files.append(
+            &mut pkg_files
+                .iter()
+                .map(|file| file.to_string())
+                .collect::<Vec<String>>(),
+        );
+    });
+
+    all_files
 }
 
 #[cfg(test)]

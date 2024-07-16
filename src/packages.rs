@@ -7,6 +7,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
 
+use super::git::get_all_files_changed_since_branch;
 use super::manager::{detect_package_manager, PackageManager};
 use super::paths::get_project_root_path;
 
@@ -36,6 +37,7 @@ pub struct PackageInfo {
     pub version: String,
     pub url: String,
     pub repository_info: Option<PackageRepositoryInfo>,
+    pub changed_files: Vec<String>,
 }
 
 #[cfg(not(feature = "napi"))]
@@ -51,6 +53,7 @@ pub struct PackageInfo {
     pub version: String,
     pub url: String,
     pub repository_info: Option<PackageRepositoryInfo>,
+    pub changed_files: Vec<String>,
 }
 
 #[cfg(feature = "napi")]
@@ -222,6 +225,7 @@ pub fn get_packages() -> Vec<PackageInfo> {
                         version: version.to_string(),
                         url: String::from(repo_url),
                         repository_info: Some(repository_info),
+                        changed_files: vec![],
                     }
                 })
                 .collect::<Vec<PackageInfo>>()
@@ -267,13 +271,13 @@ pub fn get_packages() -> Vec<PackageInfo> {
                 .unwrap()
             {
                 let entry = entry.unwrap();
-                let mut rel_path = entry
+                let rel_path = entry
                     .path()
                     .strip_prefix(&path)
                     .unwrap()
                     .display()
                     .to_string();
-                rel_path.remove(0);
+                //rel_path.remove(0);
 
                 if patterns.is_match(CandidatePath::from(
                     entry.path().strip_prefix(&path).unwrap(),
@@ -296,12 +300,13 @@ pub fn get_packages() -> Vec<PackageInfo> {
                         private,
                         package_json_path: entry.path().to_str().unwrap().to_string(),
                         package_path: entry.path().parent().unwrap().to_str().unwrap().to_string(),
-                        package_relative_path: rel_path,
+                        package_relative_path: rel_path.strip_suffix("/package.json").unwrap().to_string(),
                         pkg_json: package_json,
                         root: false,
                         version: version.to_string(),
                         url: repo_url,
                         repository_info: Some(repository_info),
+                        changed_files: vec![],
                     };
 
                     packages.push(pkg_info);
@@ -316,12 +321,12 @@ pub fn get_packages() -> Vec<PackageInfo> {
 }
 
 /// Get a list of packages that have changed since a given sha
-/*pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
+pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
     let packages = get_packages();
     let root = get_project_root_path();
     let since = sha.unwrap_or(String::from("main"));
 
-    let changed_files = get_all_files_changed_since_branch(packages.clone(), since, root);
+    let changed_files = get_all_files_changed_since_branch(&packages, &since, root);
 
     packages
         .iter()
@@ -329,17 +334,11 @@ pub fn get_packages() -> Vec<PackageInfo> {
             let mut pkgs = changed_files
                 .iter()
                 .filter(|file| file.starts_with(&pkg.package_path))
-                .map(|_file| PackageInfo {
-                    name: pkg.name.clone(),
-                    private: pkg.private,
-                    package_json_path: pkg.package_json_path.clone(),
-                    package_path: pkg.package_path.clone(),
-                    package_relative_path: pkg.package_relative_path.clone(),
-                    pkg_json: pkg.pkg_json.clone(),
-                    root: pkg.root,
-                    version: pkg.version.clone(),
-                    url: pkg.url.clone(),
-                    repository_info: pkg.repository_info.clone(),
+                .map(|file| {
+                    let mut pkg_info: PackageInfo = pkg.to_owned();
+                    pkg_info.changed_files.push(file.to_string());
+
+                    pkg_info
                 })
                 .collect::<Vec<PackageInfo>>();
 
@@ -348,7 +347,7 @@ pub fn get_packages() -> Vec<PackageInfo> {
             pkgs
         })
         .collect::<Vec<PackageInfo>>()
-}*/
+}
 
 #[cfg(test)]
 mod tests {
@@ -430,6 +429,25 @@ mod tests {
 
         assert_eq!(pkg_a.name, "@scope/package-a");
         assert_eq!(pkg_b.name, "@scope/package-b");
+
+        delete_file(&npm_lock);
+        delete_file(&package_json);
+    }
+
+    #[test]
+    fn test_changed_packages() {
+        let path = std::env::current_dir().expect("Current user home directory");
+        let npm_lock = path.join("package-lock.json");
+        let package_json = path.join("package.json");
+
+        create_file(&npm_lock);
+        create_root_package_json(&package_json);
+
+        let changed_packages = get_changed_packages(Some("main".to_string()));
+
+        dbg!(&changed_packages);
+
+        assert_eq!("@scope/package-a", "@scope/package-a");
 
         delete_file(&npm_lock);
         delete_file(&package_json);

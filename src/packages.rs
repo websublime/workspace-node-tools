@@ -369,7 +369,7 @@ mod tests {
     }
 
     fn create_root_package_json(path: &Path) -> Result<(), std::io::Error> {
-        let mut file = File::create(path).expect("File not created");
+        let mut file = File::create(path)?;
         file.write_all(
             r#"
         {

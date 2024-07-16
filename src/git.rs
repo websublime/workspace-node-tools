@@ -2,9 +2,9 @@
 //!
 //! This module provides a set of functions to interact with git.
 use execute::Execute;
+use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use std::io::Write;
 use std::{
     env::temp_dir,
@@ -16,7 +16,7 @@ use version_compare::{Cmp, Version};
 
 use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
-use super::utils::{strip_trailing_newline, package_scope_name_version};
+use super::utils::{package_scope_name_version, strip_trailing_newline};
 
 #[cfg(feature = "napi")]
 #[napi(object)]
@@ -540,8 +540,10 @@ pub fn get_last_known_publish_tag_info_for_package(
     let working_dir = get_project_root_path().unwrap();
     let current_working_dir = &cwd.unwrap_or(working_dir);
 
-    let mut remote_tags = get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(false));
-    let mut local_tags = get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(true));
+    let mut remote_tags =
+        get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(false));
+    let mut local_tags =
+        get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(true));
 
     /*let mut remote_tags = vec![
         RemoteTags {
@@ -604,9 +606,9 @@ pub fn get_last_known_publish_tag_info_for_package(
                     highest_tag = Some(String::from(tag));
                 }
 
+                let high_tag = highest_tag.as_ref().unwrap();
                 let current_tag_meta = package_scope_name_version(tag).unwrap();
-                let highest_tag_meta =
-                    package_scope_name_version(&highest_tag.clone().unwrap()).unwrap();
+                let highest_tag_meta = package_scope_name_version(high_tag).unwrap();
 
                 let current_version = Version::from(&current_tag_meta.version).unwrap();
                 let highest_version = Version::from(&highest_tag_meta.version).unwrap();
@@ -647,6 +649,22 @@ pub fn get_last_known_publish_tag_info_for_package(
     }
 
     None
+}
+
+/// Grabs the last known publish tag info for all packages in the monorepo
+pub fn get_last_known_publish_tag_info_for_all_packages(
+    package_info: &Vec<PackageInfo>,
+    cwd: Option<String>,
+) -> Vec<Option<PublishTagInfo>> {
+    let root = &cwd.unwrap_or(get_project_root_path().unwrap());
+
+    git_fetch_all(Some(root.to_string()), Some(true)).expect("Fetch all tags");
+
+    package_info
+        .iter()
+        .map(|item| get_last_known_publish_tag_info_for_package(&item, Some(root.to_string())))
+        .filter(|item| item.is_some())
+        .collect::<Vec<Option<PublishTagInfo>>>()
 }
 
 #[cfg(test)]

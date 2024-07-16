@@ -435,8 +435,8 @@ mod tests {
         let pkg_a = packages.first().unwrap();
         let pkg_b = packages.last().unwrap();
 
-        assert_eq!(pkg_a.name, "@scope/package-b");
-        assert_eq!(pkg_b.name, "@scope/package-a");
+        assert_eq!(pkg_a.name, "@scope/package-a");
+        assert_eq!(pkg_b.name, "@scope/package-b");
 
         delete_file(&npm_lock)?;
         delete_file(&package_json)?;

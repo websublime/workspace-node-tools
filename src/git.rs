@@ -679,7 +679,8 @@ mod tests {
 
     #[test]
     fn test_get_diverged_commit() {
-        let result = get_diverged_commit(String::from("main"), None);
+        let result = get_diverged_commit(String::from("0.9.0"), None);
+        dbg!(&result);
         assert!(result.is_some());
     }
 
@@ -692,6 +693,7 @@ mod tests {
     #[test]
     fn test_git_previous_sha() {
         let result = git_previous_sha(None);
+        dbg!(&result);
         assert_eq!(result.is_empty(), false);
     }
 

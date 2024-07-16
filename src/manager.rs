@@ -129,6 +129,9 @@ mod tests {
         let path = std::env::current_dir().expect("Current user home directory");
         let bun_lock = path.join("bun.lockb");
 
+        dbg!(&bun_lock);
+        dbg!(&path);
+
         create_package_manager_file(&bun_lock)?;
 
         let package_manager = detect_package_manager(&path);

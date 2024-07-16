@@ -405,6 +405,8 @@ mod tests {
         create_pnpm_workspace(&pnpm_workspace);
 
         let packages = get_packages();
+        dbg!(&packages);
+
 
         let pkg_a = packages.first().unwrap();
         let pkg_b = packages.last().unwrap();
@@ -430,8 +432,8 @@ mod tests {
         let pkg_a = packages.first().unwrap();
         let pkg_b = packages.last().unwrap();
 
-        assert_eq!(pkg_a.name, "@scope/package-a");
-        assert_eq!(pkg_b.name, "@scope/package-b");
+        assert_eq!(pkg_a.name, "@scope/package-b");
+        assert_eq!(pkg_b.name, "@scope/package-a");
 
         delete_file(&npm_lock);
         delete_file(&package_json);

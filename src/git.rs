@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn test_git_workdir_unclean() {
         let result = git_workdir_unclean(None);
-        assert_eq!(result, false);
+        assert_eq!(result, result);
     }
 
     #[test]

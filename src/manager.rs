@@ -2,7 +2,7 @@
 //!
 //! This package ables to detect which package manager is being used in the monorepo.
 
-use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result, path::Path};
+use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result as FmtResult, path::Path};
 
 #[cfg(feature = "napi")]
 #[napi(string_enum)]
@@ -24,7 +24,7 @@ pub enum PackageManager {
 }
 
 impl Display for PackageManager {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let package_manager = match self {
             PackageManager::Npm => "npm".to_string(),
             PackageManager::Yarn => "yarn".to_string(),
@@ -66,68 +66,74 @@ mod tests {
     use super::*;
     use std::fs::{remove_file, File};
 
-    fn create_package_manager_file(path: &Path) -> File {
-        File::create(path).expect("File not created")
+    fn create_package_manager_file(path: &Path) -> Result<File, std::io::Error> {
+        let file = File::create(path)?;
+        Ok(file)
     }
 
-    fn delete_package_manager_file(path: &Path) {
-        remove_file(path).expect("File not deleted");
+    fn delete_package_manager_file(path: &Path) -> Result<(), std::io::Error> {
+        remove_file(path)?;
+        Ok(())
     }
 
     #[test]
-    fn package_manager_for_npm_lock() {
+    fn package_manager_for_npm_lock() -> Result<(), std::io::Error> {
         let path = std::env::current_dir().expect("Current user home directory");
         let npm_lock = path.join("package-lock.json");
 
-        create_package_manager_file(&npm_lock);
+        create_package_manager_file(&npm_lock)?;
 
         let package_manager = detect_package_manager(&path);
 
         assert_eq!(package_manager, Some(PackageManager::Npm));
 
-        delete_package_manager_file(&npm_lock);
+        delete_package_manager_file(&npm_lock)?;
+        Ok(())
     }
 
     #[test]
-    fn package_manager_for_yarn_lock() {
+    fn package_manager_for_yarn_lock() -> Result<(), std::io::Error> {
         let path = std::env::current_dir().expect("Current user home directory");
         let yarn_lock = path.join("yarn.lock");
 
-        create_package_manager_file(&yarn_lock);
+        create_package_manager_file(&yarn_lock)?;
 
         let package_manager = detect_package_manager(&path);
 
         assert_eq!(package_manager, Some(PackageManager::Yarn));
 
-        delete_package_manager_file(&yarn_lock);
+        delete_package_manager_file(&yarn_lock)?;
+        Ok(())
     }
 
     #[test]
-    fn package_manager_for_pnpm_lock() {
+    fn package_manager_for_pnpm_lock() -> Result<(), std::io::Error> {
         let path = std::env::current_dir().expect("Current user home directory");
         let pnpm_lock = path.join("pnpm-lock.yaml");
 
-        create_package_manager_file(&pnpm_lock);
+        create_package_manager_file(&pnpm_lock)?;
 
         let package_manager = detect_package_manager(&path);
 
         assert_eq!(package_manager, Some(PackageManager::Pnpm));
 
-        delete_package_manager_file(&pnpm_lock);
+        delete_package_manager_file(&pnpm_lock)?;
+        Ok(())
     }
 
     #[test]
-    fn package_manager_for_bun_lock() {
+    fn package_manager_for_bun_lock() -> Result<(), std::io::Error> {
         let path = std::env::current_dir().expect("Current user home directory");
         let bun_lock = path.join("bun.lockb");
 
-        create_package_manager_file(&bun_lock);
+        create_package_manager_file(&bun_lock)?;
 
         let package_manager = detect_package_manager(&path);
 
         assert_eq!(package_manager, Some(PackageManager::Bun));
 
-        delete_package_manager_file(&bun_lock);
+        delete_package_manager_file(&bun_lock)?;
+        Ok(())
     }
 
     #[test]

@@ -359,16 +359,18 @@ mod tests {
     use std::io::Write;
 
     fn create_file(path: &Path) -> Result<File, std::io::Error> {
-        File::create(path)
+        let file = File::create(path)?;
+        Ok(file)
     }
 
     fn delete_file(path: &Path) -> Result<(), std::io::Error> {
-        remove_file(path)
+        remove_file(path)?;
+        Ok(())
     }
 
-    fn create_root_package_json(path: &Path) -> Result<usize, std::io::Error> {
+    fn create_root_package_json(path: &Path) -> Result<(), std::io::Error> {
         let mut file = File::create(path).expect("File not created");
-        file.write(
+        file.write_all(
             r#"
         {
             "name": "@scope/root",
@@ -379,18 +381,20 @@ mod tests {
             ]
         }"#
             .as_bytes(),
-        )
+        )?;
+        Ok(())
     }
 
-    fn create_pnpm_workspace(path: &Path) -> Result<usize, std::io::Error> {
+    fn create_pnpm_workspace(path: &Path) -> Result<(), std::io::Error> {
         let mut file = File::create(path).expect("File not created");
-        file.write(
+        file.write_all(
             r#"
             packages:
                 - "packages/*"
         "#
             .as_bytes(),
-        )
+        )?;
+        Ok(())
     }
 
     #[test]

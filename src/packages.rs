@@ -358,15 +358,15 @@ mod tests {
     use std::fs::{remove_file, File};
     use std::io::Write;
 
-    fn create_file(path: &Path) -> File {
-        File::create(path).expect("File not created")
+    fn create_file(path: &Path) -> Result<File, std::io::Error> {
+        File::create(path)
     }
 
-    fn delete_file(path: &Path) {
-        remove_file(path).expect("File not deleted");
+    fn delete_file(path: &Path) -> Result<(), std::io::Error> {
+        remove_file(path)
     }
 
-    fn create_root_package_json(path: &Path) {
+    fn create_root_package_json(path: &Path) -> Result<usize, std::io::Error> {
         let mut file = File::create(path).expect("File not created");
         file.write(
             r#"
@@ -380,10 +380,9 @@ mod tests {
         }"#
             .as_bytes(),
         )
-        .expect("File not written");
     }
 
-    fn create_pnpm_workspace(path: &Path) {
+    fn create_pnpm_workspace(path: &Path) -> Result<usize, std::io::Error> {
         let mut file = File::create(path).expect("File not created");
         file.write(
             r#"
@@ -392,21 +391,19 @@ mod tests {
         "#
             .as_bytes(),
         )
-        .expect("File not written");
     }
 
     #[test]
-    fn pnpm_get_packages() {
+    fn pnpm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
         let path = std::env::current_dir().expect("Current user home directory");
         let pnpm_lock = path.join("pnpm-lock.yaml");
         let pnpm_workspace = path.join("pnpm-workspace.yaml");
 
-        create_file(&pnpm_lock);
-        create_pnpm_workspace(&pnpm_workspace);
+        create_file(&pnpm_lock)?;
+        create_pnpm_workspace(&pnpm_workspace)?;
 
         let packages = get_packages();
         dbg!(&packages);
-
 
         let pkg_a = packages.first().unwrap();
         let pkg_b = packages.last().unwrap();
@@ -414,18 +411,20 @@ mod tests {
         assert_eq!(pkg_a.name, "@scope/package-a");
         assert_eq!(pkg_b.name, "@scope/package-b");
 
-        delete_file(&pnpm_lock);
-        delete_file(&pnpm_workspace);
+        delete_file(&pnpm_lock)?;
+        delete_file(&pnpm_workspace)?;
+
+        Ok(())
     }
 
     #[test]
-    fn npm_get_packages() {
+    fn npm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
         let path = std::env::current_dir().expect("Current user home directory");
         let npm_lock = path.join("package-lock.json");
         let package_json = path.join("package.json");
 
-        create_file(&npm_lock);
-        create_root_package_json(&package_json);
+        create_file(&npm_lock)?;
+        create_root_package_json(&package_json)?;
 
         let packages = get_packages();
 
@@ -435,25 +434,27 @@ mod tests {
         assert_eq!(pkg_a.name, "@scope/package-b");
         assert_eq!(pkg_b.name, "@scope/package-a");
 
-        delete_file(&npm_lock);
-        delete_file(&package_json);
+        delete_file(&npm_lock)?;
+        delete_file(&package_json)?;
+        Ok(())
     }
 
     #[test]
-    fn test_changed_packages() {
+    fn test_changed_packages() -> Result<(), Box<dyn std::error::Error>> {
         let path = std::env::current_dir().expect("Current user home directory");
         let npm_lock = path.join("package-lock.json");
         let package_json = path.join("package.json");
 
-        create_file(&npm_lock);
-        create_root_package_json(&package_json);
+        create_file(&npm_lock)?;
+        create_root_package_json(&package_json)?;
 
         let changed_packages = get_changed_packages(Some("main".to_string()));
         let count = changed_packages.len();
 
         assert_eq!(count, count);
 
-        delete_file(&npm_lock);
-        delete_file(&package_json);
+        delete_file(&npm_lock)?;
+        delete_file(&package_json)?;
+        Ok(())
     }
 }

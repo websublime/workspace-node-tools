@@ -64,15 +64,18 @@ pub fn detect_package_manager(path: &Path) -> Option<PackageManager> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::{remove_file, File};
+    use core::time;
+    use std::{fs::{remove_file, File}, thread};
 
     fn create_package_manager_file(path: &Path) -> Result<File, std::io::Error> {
         let file = File::create(path)?;
+        thread::sleep(time::Duration::from_secs(1));
         Ok(file)
     }
 
     fn delete_package_manager_file(path: &Path) -> Result<(), std::io::Error> {
         remove_file(path)?;
+        thread::sleep(time::Duration::from_secs(1));
         Ok(())
     }
 

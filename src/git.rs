@@ -4,6 +4,7 @@
 use execute::Execute;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use std::io::Write;
 use std::{
     env::temp_dir,
@@ -11,10 +12,11 @@ use std::{
     path::Path,
     process::{Command, Stdio},
 };
+use version_compare::{Cmp, Version};
 
 use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
-use super::utils::strip_trailing_newline;
+use super::utils::{strip_trailing_newline, package_scope_name_version};
 
 #[cfg(feature = "napi")]
 #[napi(object)]
@@ -50,6 +52,23 @@ pub struct RemoteTags {
 pub struct RemoteTags {
     pub hash: String,
     pub tag: String,
+}
+
+#[cfg(feature = "napi")]
+#[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PublishTagInfo {
+    pub hash: String,
+    pub tag: String,
+    pub package: String,
+}
+
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PublishTagInfo {
+    pub hash: String,
+    pub tag: String,
+    pub package: String,
 }
 
 pub fn git_fetch_all(
@@ -513,6 +532,123 @@ pub fn get_all_files_changed_since_branch(
     all_files
 }
 
+/// Grabs the last known publish tag info for a package
+pub fn get_last_known_publish_tag_info_for_package(
+    package_info: &PackageInfo,
+    cwd: Option<String>,
+) -> Option<PublishTagInfo> {
+    let working_dir = get_project_root_path().unwrap();
+    let current_working_dir = &cwd.unwrap_or(working_dir);
+
+    let mut remote_tags = get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(false));
+    let mut local_tags = get_remote_or_local_tags(Some(current_working_dir.to_string()), Some(true));
+
+    /*let mut remote_tags = vec![
+        RemoteTags {
+            hash: String::from("ddd1fa69be3e6c6a8b2f18af8f8f5607106188db"),
+            tag: String::from("refs/tags/@b2x/workspace-node@1.0.4")
+        },
+        RemoteTags {
+            hash: String::from("c5353e1f3c9385c35f64e838a0a09dc4bb8f7b07"),
+            tag: String::from("refs/tags/@b2x/workspace-node@1.0.2")
+        }
+    ];
+
+    let mut local_tags = vec![
+        RemoteTags {
+            hash: String::from("4a16b15bb5cfeca493c79231452e94e56487d6b4"),
+            tag: String::from("refs/tags/@b2x/workspace-node@0.9.9")
+        },
+        RemoteTags {
+            hash: String::from("ee5f8209e6d3b06fbf5712e424652e909a4cb5c2"),
+            tag: String::from("refs/tags/@b2x/workspace-node@1.0.5")
+        }
+    ];*/
+
+    remote_tags.append(&mut local_tags);
+
+    let mut options = CollatorOptions::new();
+    options.strength = Some(Strength::Secondary);
+    options.numeric = Some(Numeric::On);
+
+    let collator = Collator::try_new(&Default::default(), options).unwrap();
+
+    remote_tags.sort_by(|a, b| {
+        let tag_a = a.tag.replace("refs/tags/", "");
+        let tag_b = b.tag.replace("refs/tags/", "");
+
+        collator.compare(&tag_b, &tag_a)
+    });
+
+    let package_tag = format!("{}@{}", package_info.name, package_info.version);
+
+    let mut match_tag = remote_tags.iter().find(|item| {
+        let tag = item.tag.replace("refs/tags/", "");
+        let matches: Vec<&str> = tag.matches(&package_tag).collect();
+
+        if matches.len() > 0 {
+            return true;
+        } else {
+            return false;
+        }
+    });
+
+    if match_tag.is_none() {
+        let mut highest_tag = None;
+
+        remote_tags.iter().for_each(|item| {
+            let tag = &item.tag.replace("refs/tags/", "");
+
+            if tag.contains(&package_info.name) {
+                if highest_tag.is_none() {
+                    highest_tag = Some(String::from(tag));
+                }
+
+                let current_tag_meta = package_scope_name_version(tag).unwrap();
+                let highest_tag_meta =
+                    package_scope_name_version(&highest_tag.clone().unwrap()).unwrap();
+
+                let current_version = Version::from(&current_tag_meta.version).unwrap();
+                let highest_version = Version::from(&highest_tag_meta.version).unwrap();
+
+                if current_version.compare_to(&highest_version, Cmp::Gt) {
+                    highest_tag = Some(String::from(tag));
+                }
+            }
+        });
+
+        if highest_tag.is_some() {
+            let highest_tag = highest_tag.unwrap();
+            let highest_tag_meta = package_scope_name_version(&highest_tag).unwrap();
+
+            match_tag = remote_tags.iter().find(|item| {
+                let tag = item.tag.replace("refs/tags/", "");
+                let matches: Vec<&str> = tag.matches(&highest_tag_meta.full).collect();
+
+                if matches.len() > 0 {
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        }
+    }
+
+    if match_tag.is_some() {
+        let hash = &match_tag.unwrap().hash;
+        let tag = &match_tag.unwrap().tag;
+        let package = &package_info.name;
+
+        return Some(PublishTagInfo {
+            hash: hash.to_string(),
+            tag: tag.to_string(),
+            package: package.to_string(),
+        });
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -526,7 +662,7 @@ mod tests {
     #[test]
     fn test_get_diverged_commit() {
         let result = get_diverged_commit(String::from("main"), None);
-        assert_eq!(result.is_some(), true);
+        assert!(result.is_some());
     }
 
     #[test]

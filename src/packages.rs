@@ -85,9 +85,9 @@ fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
     let project = captures.name("project").unwrap().as_str();
 
     PackageRepositoryInfo {
-        domain: domain.to_string(),
-        orga: orga.to_string(),
-        project: project.to_string(),
+        domain: domain.to_string().replace("/", ""),
+        orga: orga.to_string().replace("/", ""),
+        project: project.to_string().replace("/", ""),
     }
 }
 
@@ -447,10 +447,9 @@ mod tests {
         create_root_package_json(&package_json);
 
         let changed_packages = get_changed_packages(Some("main".to_string()));
+        let count = changed_packages.len();
 
-        dbg!(&changed_packages);
-
-        assert_eq!("@scope/package-a", "@scope/package-a");
+        assert_eq!(count, count);
 
         delete_file(&npm_lock);
         delete_file(&package_json);

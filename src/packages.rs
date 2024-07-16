@@ -300,7 +300,10 @@ pub fn get_packages() -> Vec<PackageInfo> {
                         private,
                         package_json_path: entry.path().to_str().unwrap().to_string(),
                         package_path: entry.path().parent().unwrap().to_str().unwrap().to_string(),
-                        package_relative_path: rel_path.strip_suffix("/package.json").unwrap().to_string(),
+                        package_relative_path: rel_path
+                            .strip_suffix("/package.json")
+                            .unwrap()
+                            .to_string(),
                         pkg_json: package_json,
                         root: false,
                         version: version.to_string(),

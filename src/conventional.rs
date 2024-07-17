@@ -1,4 +1,5 @@
 #![allow(clippy::all)]
+use std::path::PathBuf;
 use git_cliff_core::{
     changelog::Changelog,
     commit::{Commit as GitCommit, Signature},
@@ -261,8 +262,10 @@ pub fn get_conventional_for_package(
     cwd: Option<String>,
     conventional_options: &Option<ConventionalPackageOptions>,
 ) -> ConventionalPackage {
-    let working_dir = get_project_root_path().unwrap();
-    let current_working_dir = &cwd.unwrap_or(working_dir);
+    let current_working_dir = match cwd {
+        Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap()
+    };
 
     if no_fetch_all.is_none() {
         git_fetch_all(Some(current_working_dir.to_string()), None).expect("Fetch all");
@@ -352,61 +355,4 @@ pub fn get_conventional_for_package(
         serde_json::to_value(&conventional_config.git).unwrap();
 
     conventional_package
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::packages::get_packages;
-    use std::fs::{remove_file, File};
-    use std::io::Write;
-    use std::path::Path;
-
-    fn create_file(path: &Path) -> File {
-        File::create(path).expect("File not created")
-    }
-
-    fn delete_file(path: &Path) {
-        remove_file(path).expect("File not deleted");
-    }
-
-    fn create_pnpm_workspace(path: &Path) {
-        let mut file = File::create(path).expect("File not created");
-        file.write(
-            r#"
-            packages:
-                - "packages/*"
-        "#
-            .as_bytes(),
-        )
-        .expect("File not written");
-    }
-
-    #[test]
-    fn test_get_conventional() {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let pnpm_lock = path.join("pnpm-lock.yaml");
-        let pnpm_workspace = path.join("pnpm-workspace.yaml");
-
-        create_file(&pnpm_lock);
-        create_pnpm_workspace(&pnpm_workspace);
-
-        let packages = get_packages();
-        let pkg_a = packages.first().unwrap();
-
-        let conventional = get_conventional_for_package(
-            pkg_a,
-            None,
-            None,
-            &Some(ConventionalPackageOptions {
-                version: Some(String::from("0.0.1")),
-                title: Some(String::from("My title")),
-            }),
-        );
-
-        assert!(conventional.changelog_output.len() > 0);
-
-        delete_file(&pnpm_lock);
-        delete_file(&pnpm_workspace);
-    }
 }

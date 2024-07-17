@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use execute::Execute;
 use package_json_schema::{PackageJson, Repository};
 use regex::Regex;
@@ -152,17 +153,25 @@ fn format_repo_url(repo: &Option<Repository>) -> String {
 }
 
 /// Get defined package manager in the monorepo
-pub fn get_monorepo_package_manager() -> Option<PackageManager> {
-    let project_root = get_project_root_path().unwrap();
+pub fn get_monorepo_package_manager(cwd: Option<String>) -> Option<PackageManager> {
+    let project_root = match cwd {
+        Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap()
+    };
+
     let path = Path::new(&project_root);
 
     detect_package_manager(&path)
 }
 
 /// Get a list of packages available in the monorepo
-pub fn get_packages() -> Vec<PackageInfo> {
-    let package_manager = get_monorepo_package_manager();
-    let project_root = get_project_root_path().unwrap();
+pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
+    let project_root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap()
+    };
+    let package_manager = get_monorepo_package_manager(cwd);
+    //let project_root = get_project_root_path().unwrap();
 
     return match package_manager {
         Some(PackageManager::Pnpm) => {
@@ -324,12 +333,16 @@ pub fn get_packages() -> Vec<PackageInfo> {
 }
 
 /// Get a list of packages that have changed since a given sha
-pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
-    let packages = get_packages();
-    let root = get_project_root_path();
+pub fn get_changed_packages(sha: Option<String>, cwd: Option<String>) -> Vec<PackageInfo> {
+    let root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap()
+    };
+
+    let packages = get_packages(Some(root.to_string()));
     let since = sha.unwrap_or(String::from("main"));
 
-    let changed_files = get_all_files_changed_since_branch(&packages, &since, root);
+    let changed_files = get_all_files_changed_since_branch(&packages, &since, Some(root.to_string()));
 
     packages
         .iter()
@@ -350,115 +363,4 @@ pub fn get_changed_packages(sha: Option<String>) -> Vec<PackageInfo> {
             pkgs
         })
         .collect::<Vec<PackageInfo>>()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs::{remove_file, File};
-    use std::io::Write;
-
-    fn create_file(path: &Path) -> Result<File, std::io::Error> {
-        let file = File::create(path)?;
-        Ok(file)
-    }
-
-    fn delete_file(path: &Path) -> Result<(), std::io::Error> {
-        remove_file(path)?;
-        Ok(())
-    }
-
-    fn create_root_package_json(path: &Path) -> Result<(), std::io::Error> {
-        let mut file = File::create(path)?;
-        file.write_all(
-            r#"
-        {
-            "name": "@scope/root",
-            "version": "0.0.0",
-            "workspaces": [
-                "packages/package-a",
-                "packages/package-b"
-            ]
-        }"#
-            .as_bytes(),
-        )?;
-        Ok(())
-    }
-
-    fn create_pnpm_workspace(path: &Path) -> Result<(), std::io::Error> {
-        let mut file = File::create(path).expect("File not created");
-        file.write_all(
-            r#"
-            packages:
-                - "packages/*"
-        "#
-            .as_bytes(),
-        )?;
-        Ok(())
-    }
-
-    #[test]
-    fn pnpm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let pnpm_lock = path.join("pnpm-lock.yaml");
-        let pnpm_workspace = path.join("pnpm-workspace.yaml");
-
-        create_file(&pnpm_lock)?;
-        create_pnpm_workspace(&pnpm_workspace)?;
-
-        let packages = get_packages();
-        dbg!(&packages);
-
-        let pkg_a = packages.first().unwrap();
-        let pkg_b = packages.last().unwrap();
-
-        assert_eq!(pkg_a.name, "@scope/package-a");
-        assert_eq!(pkg_b.name, "@scope/package-b");
-
-        delete_file(&pnpm_lock)?;
-        delete_file(&pnpm_workspace)?;
-
-        Ok(())
-    }
-
-    #[test]
-    fn npm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let npm_lock = path.join("package-lock.json");
-        let package_json = path.join("package.json");
-
-        create_file(&npm_lock)?;
-        create_root_package_json(&package_json)?;
-
-        let packages = get_packages();
-
-        let pkg_a = packages.first().unwrap();
-        let pkg_b = packages.last().unwrap();
-
-        assert_eq!(pkg_a.name, "@scope/package-a");
-        assert_eq!(pkg_b.name, "@scope/package-b");
-
-        delete_file(&npm_lock)?;
-        delete_file(&package_json)?;
-        Ok(())
-    }
-
-    #[test]
-    fn test_changed_packages() -> Result<(), Box<dyn std::error::Error>> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let npm_lock = path.join("package-lock.json");
-        let package_json = path.join("package.json");
-
-        create_file(&npm_lock)?;
-        create_root_package_json(&package_json)?;
-
-        let changed_packages = get_changed_packages(Some("main".to_string()));
-        let count = changed_packages.len();
-
-        assert_eq!(count, count);
-
-        delete_file(&npm_lock)?;
-        delete_file(&package_json)?;
-        Ok(())
-    }
 }

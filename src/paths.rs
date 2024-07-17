@@ -13,8 +13,11 @@ use std::{
 };
 
 /// Get the project root path.
-pub fn get_project_root_path() -> Option<String> {
-    let env_dir = env::current_dir();
+pub fn get_project_root_path(root: Option<PathBuf>) -> Option<String> {
+    let env_dir = match root {
+        Some(dir) => Ok(dir),
+        None => env::current_dir()
+    };
 
     let current_dir = match env_dir {
         Ok(dir) => dir,
@@ -85,12 +88,9 @@ fn walk_reverse_dir(path: &Path) -> Option<String> {
 mod tests {
     use super::*;
 
-    use std::fs::{remove_file, rename, File};
+    use crate::utils::create_test_monorepo;
+    use std::fs::{remove_file, rename};
     use std::path::Path;
-
-    fn create_agent_file(path: &Path) -> File {
-        File::create(path).expect("File not created")
-    }
 
     fn delete_agent_file(path: &Path) {
         remove_file(path).expect("File not deleted");
@@ -101,83 +101,86 @@ mod tests {
     }
 
     #[test]
-    fn npm_root_project() {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let npm_lock = path.join("package-lock.json");
-        let git_home = path.join(".git");
-        let no_git = path.join(".no_git");
+    fn npm_root_project() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Npm)?;
+        let git_home = monorepo_dir.join(".git");
+        let no_git = monorepo_dir.join(".no_git");
+
+        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
-        create_agent_file(&npm_lock);
 
-        let project_root = get_project_root_path();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
+        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        delete_agent_file(&npm_lock);
-        git_dir_rename(&no_git, &git_home);
+        std::fs::remove_dir(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn yarn_root_project() {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let yarn_lock = path.join("yarn.lock");
-        let git_home = path.join(".git");
-        let no_git = path.join(".no_git");
+    fn yarn_root_project() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Yarn)?;
+        let git_home = monorepo_dir.join(".git");
+        let no_git = monorepo_dir.join(".no_git");
+
+        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
-        create_agent_file(&yarn_lock);
 
-        let project_root = get_project_root_path();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
+        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        delete_agent_file(&yarn_lock);
-        git_dir_rename(&no_git, &git_home);
+        std::fs::remove_dir(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn pnpm_root_project() {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let pnpm_lock = path.join("pnpm-lock.yaml");
-        let git_home = path.join(".git");
-        let no_git = path.join(".no_git");
+    fn pnpm_root_project() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Pnpm)?;
+        let git_home = monorepo_dir.join(".git");
+        let no_git = monorepo_dir.join(".no_git");
+
+        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
-        create_agent_file(&pnpm_lock);
 
-        let project_root = get_project_root_path();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
+        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        delete_agent_file(&pnpm_lock);
-        git_dir_rename(&no_git, &git_home);
+        std::fs::remove_dir(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn bun_root_project() {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let bun_lock = path.join("bun.lockb");
-        let git_home = path.join(".git");
-        let no_git = path.join(".no_git");
+    fn bun_root_project() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Bun)?;
+        let git_home = monorepo_dir.join(".git");
+        let no_git = monorepo_dir.join(".no_git");
+
+        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
-        create_agent_file(&bun_lock);
 
-        let project_root = get_project_root_path();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
+        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        delete_agent_file(&bun_lock);
-        git_dir_rename(&no_git, &git_home);
+        std::fs::remove_dir(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn git_root_project() {
-        let path = std::env::current_dir().expect("Current user home directory");
+    fn git_root_project() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Bun)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        let project_root = get_project_root_path();
+        dbg!(&monorepo_dir);
 
-        assert_eq!(project_root, Some(path.to_str().unwrap().to_string()));
+        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
+        std::fs::remove_dir(&monorepo_dir)?;
+        Ok(())
     }
 }

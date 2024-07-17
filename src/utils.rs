@@ -1,4 +1,4 @@
-#![allow(clippy::option_map_or_none)]
+#![allow(clippy::all)]
 #![allow(dead_code)]
 
 use rand::distributions::Alphanumeric;

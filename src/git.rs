@@ -1,6 +1,7 @@
 //! # Git
 //!
 //! This module provides a set of functions to interact with git.
+#![allow(clippy::all)]
 use execute::Execute;
 use icu::collator::{Collator, CollatorOptions, Numeric, Strength};
 use regex::Regex;

@@ -1,5 +1,4 @@
-#![allow(clippy::unwrap_or_default)]
-#![allow(clippy::useless_vec)]
+#![allow(clippy::all)]
 
 //! #Paths module
 //!

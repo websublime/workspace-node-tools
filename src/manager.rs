@@ -1,7 +1,7 @@
 //! # Package Manager
 //!
 //! This package ables to detect which package manager is being used in the monorepo.
-
+#![allow(clippy::all)]
 use std::{
     collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result as FmtResult, path::Path,
 };

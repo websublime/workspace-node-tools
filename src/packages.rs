@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 use execute::Execute;
 use package_json_schema::{PackageJson, Repository};
 use regex::Regex;

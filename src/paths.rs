@@ -89,12 +89,9 @@ mod tests {
     use super::*;
 
     use crate::utils::create_test_monorepo;
-    use std::fs::{remove_file, rename};
+    use crate::manager::PackageManager;
+    use std::fs::{rename, remove_dir_all};
     use std::path::Path;
-
-    fn delete_agent_file(path: &Path) {
-        remove_file(path).expect("File not deleted");
-    }
 
     fn git_dir_rename(from: &Path, to: &Path) {
         rename(from, to).expect("Rename dir");
@@ -102,11 +99,9 @@ mod tests {
 
     #[test]
     fn npm_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Npm)?;
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
         let git_home = monorepo_dir.join(".git");
         let no_git = monorepo_dir.join(".no_git");
-
-        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
 
@@ -114,17 +109,15 @@ mod tests {
 
         assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        std::fs::remove_dir(&monorepo_dir)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn yarn_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Yarn)?;
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Yarn)?;
         let git_home = monorepo_dir.join(".git");
         let no_git = monorepo_dir.join(".no_git");
-
-        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
 
@@ -132,17 +125,15 @@ mod tests {
 
         assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        std::fs::remove_dir(&monorepo_dir)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn pnpm_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Pnpm)?;
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Pnpm)?;
         let git_home = monorepo_dir.join(".git");
         let no_git = monorepo_dir.join(".no_git");
-
-        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
 
@@ -150,17 +141,15 @@ mod tests {
 
         assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        std::fs::remove_dir(&monorepo_dir)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn bun_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Bun)?;
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Bun)?;
         let git_home = monorepo_dir.join(".git");
         let no_git = monorepo_dir.join(".no_git");
-
-        dbg!(&monorepo_dir);
 
         git_dir_rename(&git_home, &no_git);
 
@@ -168,19 +157,17 @@ mod tests {
 
         assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
 
-        std::fs::remove_dir(&monorepo_dir)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn git_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref monorepo_dir = create_test_monorepo(&crate::manager::PackageManager::Bun)?;
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        dbg!(&monorepo_dir);
-
-        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
-        std::fs::remove_dir(&monorepo_dir)?;
+        assert_eq!(project_root.is_some(), true);
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 }

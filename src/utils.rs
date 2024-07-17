@@ -1,6 +1,7 @@
 #![allow(clippy::option_map_or_none)]
-#![warn(dead_code)]
+#![allow(dead_code)]
 
+use std::os::unix::fs::PermissionsExt;
 use std::process::Stdio;
 use std::io::Write;
 use std::env::temp_dir;
@@ -69,6 +70,8 @@ pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<P
     create_dir(&monorepo_packages_dir)?;
     create_dir(&monorepo_package_a_dir)?;
     create_dir(&monorepo_package_b_dir)?;
+
+    std::fs::set_permissions(&monorepo_temp_dir, std::fs::Permissions::from_mode(0o777))?;
 
     let mut monorepo_package_json_file = File::create(&monorepo_package_json)?;
     monorepo_package_json_file.write_all(

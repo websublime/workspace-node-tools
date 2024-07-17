@@ -1,5 +1,4 @@
 #![allow(clippy::all)]
-use std::path::PathBuf;
 use git_cliff_core::{
     changelog::Changelog,
     commit::{Commit as GitCommit, Signature},
@@ -11,6 +10,7 @@ use git_cliff_core::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::path::PathBuf;
 
 use super::git::{
     get_commits_since, get_last_known_publish_tag_info_for_package, git_fetch_all, Commit,
@@ -264,7 +264,7 @@ pub fn get_conventional_for_package(
 ) -> ConventionalPackage {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     if no_fetch_all.is_none() {

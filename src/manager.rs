@@ -2,7 +2,9 @@
 //!
 //! This package ables to detect which package manager is being used in the monorepo.
 
-use std::{collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result as FmtResult, path::Path};
+use std::{
+    collections::HashMap, fmt::Display, fmt::Formatter, fmt::Result as FmtResult, path::Path,
+};
 
 #[cfg(feature = "napi")]
 #[napi(string_enum)]

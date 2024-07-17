@@ -1,16 +1,16 @@
 #![allow(clippy::option_map_or_none)]
 #![allow(dead_code)]
 
-use std::os::unix::fs::PermissionsExt;
-use std::process::Stdio;
-use std::io::Write;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+use regex::Regex;
 use std::env::temp_dir;
-use std::fs::{File, create_dir};
+use std::fs::{create_dir, File};
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
-use regex::Regex;
+use std::process::Stdio;
 
 use super::manager::PackageManager;
 
@@ -51,7 +51,9 @@ pub(crate) fn strip_trailing_newline(input: &String) -> String {
         .to_string()
 }
 
-pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<PathBuf, std::io::Error> {
+pub(crate) fn create_test_monorepo(
+    package_manager: &PackageManager,
+) -> Result<PathBuf, std::io::Error> {
     let rand_string: String = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -75,7 +77,7 @@ pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<P
 
     let mut monorepo_package_json_file = File::create(&monorepo_package_json)?;
     monorepo_package_json_file.write_all(
-            r#"
+        r#"
         {
             "name": "@scope/root",
             "version": "0.0.0",
@@ -84,8 +86,8 @@ pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<P
                 "packages/package-b"
             ]
         }"#
-            .as_bytes(),
-        )?;
+        .as_bytes(),
+    )?;
 
     let mut monorepo_package_a_json = File::create(&monorepo_package_a_dir.join("package.json"))?;
     let mut monorepo_package_b_json = File::create(&monorepo_package_b_dir.join("package.json"))?;
@@ -141,7 +143,7 @@ pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<P
         PackageManager::Yarn => {
             let yarn_lock = monorepo_temp_dir.join("yarn.lock");
             File::create(&yarn_lock)?;
-        },
+        }
         PackageManager::Pnpm => {
             let pnpm_lock = monorepo_temp_dir.join("pnpm-lock.yaml");
             let pnpm_workspace = monorepo_temp_dir.join("pnpm-workspace.yaml");
@@ -155,15 +157,15 @@ pub(crate) fn create_test_monorepo(package_manager: &PackageManager) -> Result<P
                 "#
                 .as_bytes(),
             )?;
-        },
+        }
         PackageManager::Bun => {
             let bun_lock = monorepo_temp_dir.join("bun.lock");
             File::create(&bun_lock)?;
-        },
+        }
         PackageManager::Npm => {
             let npm_lock = monorepo_temp_dir.join("package-lock.json");
             File::create(&npm_lock)?;
-        },
+        }
     }
 
     let init = Command::new("git")

@@ -78,7 +78,7 @@ pub fn git_fetch_all(
 ) -> Result<bool, std::io::Error> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -106,7 +106,7 @@ pub fn git_fetch_all(
 pub fn get_diverged_commit(refer: String, cwd: Option<String>) -> Option<String> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -131,7 +131,7 @@ pub fn get_diverged_commit(refer: String, cwd: Option<String>) -> Option<String>
 pub fn git_current_sha(cwd: Option<String>) -> String {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -152,7 +152,7 @@ pub fn git_current_sha(cwd: Option<String>) -> String {
 pub fn git_previous_sha(cwd: Option<String>) -> String {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -173,7 +173,7 @@ pub fn git_previous_sha(cwd: Option<String>) -> String {
 pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -200,7 +200,7 @@ pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
 pub fn git_current_branch(cwd: Option<String>) -> Option<String> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -227,7 +227,7 @@ pub fn git_current_branch(cwd: Option<String>) -> Option<String> {
 pub fn git_branch_from_commit(commit: String, cwd: Option<String>) -> Option<String> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     // git --no-pager branch --no-color --no-column --format "%(refname:lstrip=2)" --contains <commit>
@@ -267,7 +267,7 @@ pub fn git_tag(
 ) -> Result<bool, std::io::Error> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let default_message = &tag;
@@ -294,7 +294,7 @@ pub fn git_tag(
 pub fn git_push(cwd: Option<String>, follow_tags: Option<bool>) -> Result<bool, std::io::Error> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -328,7 +328,7 @@ pub fn git_commit(
 ) -> Result<bool, std::io::Error> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     if body.is_some() {
@@ -377,7 +377,7 @@ pub fn git_commit(
 pub fn git_all_files_changed_since_sha(sha: String, cwd: Option<String>) -> Vec<String> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -419,7 +419,7 @@ pub fn get_commits_since(
 ) -> Vec<Commit> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     const DELIMITER: &str = r#"#=#"#;
@@ -479,7 +479,7 @@ pub fn get_commits_since(
 pub fn get_remote_or_local_tags(cwd: Option<String>, local: Option<bool>) -> Vec<RemoteTags> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut command = Command::new("git");
@@ -535,7 +535,7 @@ pub fn get_all_files_changed_since_branch(
 ) -> Vec<String> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut all_files = vec![];
@@ -569,7 +569,7 @@ pub fn get_last_known_publish_tag_info_for_package(
 ) -> Option<PublishTagInfo> {
     let current_working_dir = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let mut remote_tags =
@@ -690,7 +690,7 @@ pub fn get_last_known_publish_tag_info_for_all_packages(
 ) -> Vec<Option<PublishTagInfo>> {
     let root = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     git_fetch_all(Some(root.to_string()), Some(true)).expect("Fetch all tags");

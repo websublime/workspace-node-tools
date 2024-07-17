@@ -1,10 +1,10 @@
-use std::path::PathBuf;
 use execute::Execute;
 use package_json_schema::{PackageJson, Repository};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
 
@@ -156,7 +156,7 @@ fn format_repo_url(repo: &Option<Repository>) -> String {
 pub fn get_monorepo_package_manager(cwd: Option<String>) -> Option<PackageManager> {
     let project_root = match cwd {
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let path = Path::new(&project_root);
@@ -168,7 +168,7 @@ pub fn get_monorepo_package_manager(cwd: Option<String>) -> Option<PackageManage
 pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
     let project_root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
     let package_manager = get_monorepo_package_manager(cwd);
     //let project_root = get_project_root_path().unwrap();
@@ -336,13 +336,14 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
 pub fn get_changed_packages(sha: Option<String>, cwd: Option<String>) -> Vec<PackageInfo> {
     let root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap()
+        None => get_project_root_path(None).unwrap(),
     };
 
     let packages = get_packages(Some(root.to_string()));
     let since = sha.unwrap_or(String::from("main"));
 
-    let changed_files = get_all_files_changed_since_branch(&packages, &since, Some(root.to_string()));
+    let changed_files =
+        get_all_files_changed_since_branch(&packages, &since, Some(root.to_string()));
 
     packages
         .iter()

@@ -16,7 +16,7 @@ use std::{
 pub fn get_project_root_path(root: Option<PathBuf>) -> Option<String> {
     let env_dir = match root {
         Some(dir) => Ok(dir),
-        None => env::current_dir()
+        None => env::current_dir(),
     };
 
     let current_dir = match env_dir {
@@ -88,9 +88,9 @@ fn walk_reverse_dir(path: &Path) -> Option<String> {
 mod tests {
     use super::*;
 
-    use crate::utils::create_test_monorepo;
     use crate::manager::PackageManager;
-    use std::fs::{rename, remove_dir_all};
+    use crate::utils::create_test_monorepo;
+    use std::fs::{remove_dir_all, rename};
     use std::path::Path;
 
     fn git_dir_rename(from: &Path, to: &Path) {
@@ -107,7 +107,10 @@ mod tests {
 
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
+        assert_eq!(
+            project_root,
+            Some(monorepo_dir.to_str().unwrap().to_string())
+        );
 
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -123,7 +126,10 @@ mod tests {
 
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
+        assert_eq!(
+            project_root,
+            Some(monorepo_dir.to_str().unwrap().to_string())
+        );
 
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -139,7 +145,10 @@ mod tests {
 
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
+        assert_eq!(
+            project_root,
+            Some(monorepo_dir.to_str().unwrap().to_string())
+        );
 
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -155,7 +164,10 @@ mod tests {
 
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        assert_eq!(project_root, Some(monorepo_dir.to_str().unwrap().to_string()));
+        assert_eq!(
+            project_root,
+            Some(monorepo_dir.to_str().unwrap().to_string())
+        );
 
         remove_dir_all(&monorepo_dir)?;
         Ok(())

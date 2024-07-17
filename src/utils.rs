@@ -171,11 +171,35 @@ pub(crate) fn create_test_monorepo(
     let init = Command::new("git")
         .current_dir(&monorepo_temp_dir)
         .arg("init")
+        .arg("--initial-branch")
+        .arg("main")
         .stdout(Stdio::piped())
         .spawn()
         .expect("Git init problem");
 
     init.wait_with_output()?;
+
+    let config_email = Command::new("git")
+        .current_dir(&monorepo_temp_dir)
+        .arg("config")
+        .arg("user.email")
+        .arg("machine@websublime.dev")
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Git config user email problem");
+
+    config_email.wait_with_output()?;
+
+    let config_name = Command::new("git")
+        .current_dir(&monorepo_temp_dir)
+        .arg("config")
+        .arg("user.name")
+        .arg("Sublime Machine")
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Git config user name problem");
+
+    config_name.wait_with_output()?;
 
     let add = Command::new("git")
         .current_dir(&monorepo_temp_dir)

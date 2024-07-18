@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2024-07-18
+
+### 🚀 Features
+
+- Package manager and root project path
+- Some git commands functions
+- More git commands
+- Remove clone method in git commands
+- Get_packages for pnpm
+- Get_packages for npm and yarn
+- Get_packages for npm and yarn
+- Get_changed_packages initial implementation
+- Get_last_known_publish_tag_info_for_package init implementation
+- Get_last_known_publish_tag_info_for_all_packages implementation
+- Get_conventional_for_package implementation
+- Init test structure
+- Bumps implementation initialization
+- Ge_bumps implementation
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Commits since test
+- More git commands
+- More git commands
+- Maintenance format
+- Init fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Packages fixing tests
+- Paths tests
+- Maintenance format
+- Test structure with git config
+- Clippy all
+- Packages module tests
+- Conventional tests
+- Serialize and deserialize on bump
+- No trait clone in bump
+- Missing cwd property
+- Output debbug
+- Conventional test find package
+- Maintenance format
+- Maintenance format
+- Init apply_bumps
+- Merge pull request #15 from websublime/feature/next
+- Bump version
+
 ## [0.9.0] - 2024-07-12
 
 ### 🚀 Features

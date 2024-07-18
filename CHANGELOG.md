@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2024-07-18
+
+### 🐛 Bug Fixes
+
+- Cfg for windows and exclude compile functions for testing
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+
 ## [1.0.2] - 2024-07-18
 
 ### 🐛 Bug Fixes

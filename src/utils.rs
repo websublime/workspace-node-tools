@@ -1,8 +1,6 @@
 #![allow(clippy::all)]
 #![allow(dead_code)]
 
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use regex::Regex;
 use std::env::temp_dir;
 use std::fs::{create_dir, File};
@@ -20,6 +18,21 @@ pub struct PackageScopeMetadata {
     pub name: String,
     pub version: String,
     pub path: Option<String>,
+}
+
+struct Rng(u64);
+
+impl Rng {
+    const A: u64 = 6364136223846793005;
+
+    fn rand(&mut self) -> u64 {
+        self.0 = self.0.wrapping_mul(Self::A).wrapping_add(1);
+        self.0
+    }
+
+    fn from_seed(seed: u64) -> Self {
+        Self(seed ^ 3141592653589793238)
+    }
 }
 
 /// Extracts the package scope name and version from a package name.
@@ -54,11 +67,8 @@ pub(crate) fn strip_trailing_newline(input: &String) -> String {
 pub(crate) fn create_test_monorepo(
     package_manager: &PackageManager,
 ) -> Result<PathBuf, std::io::Error> {
-    let rand_string: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+    let mut rng = Rng::from_seed(0);
+    let rand_string = format!("{:016x}", rng.rand());
 
     let temp_dir = temp_dir();
     let monorepo_temp_dir = temp_dir.join(format!("monorepo-{}", rand_string));

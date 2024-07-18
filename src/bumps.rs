@@ -1,10 +1,10 @@
-//! # Bumps
-//! 
-//! This module is responsible for managing the bumps in the monorepo.
 #![warn(dead_code)]
 #![warn(unused_imports)]
 #![allow(clippy::all)]
 
+//! # Bumps
+//!
+//! This module is responsible for managing the bumps in the monorepo.
 use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};

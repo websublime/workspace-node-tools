@@ -1,12 +1,11 @@
 [package]
 name = "workspace-node-tools"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 description = "Node workspace version tools"
 repository = "https://github.com/websublime/workspace-node-tools"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
-exclude = ["./temp/*"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -23,7 +22,7 @@ napi = { version = "2.16.7", default-features = false, features = ["napi9", "ser
 package_json_schema = "0.2.1"
 icu = "1.5.0"
 version-compare = "0.2"
-git-cliff-core = "2.3.0"
+git-cliff-core = "2.4.0"
 chrono = "0.4.38"
 semver = "1.0.23"
 

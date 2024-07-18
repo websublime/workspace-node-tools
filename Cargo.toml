@@ -1,11 +1,12 @@
 [package]
 name = "workspace-node-tools"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 description = "Node workspace version tools"
 repository = "https://github.com/websublime/workspace-node-tools"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -15,10 +16,10 @@ path = "src/lib.rs"
 execute = "0.2.13"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
-regex = "1.10.3"
+regex = "1.10.5"
 wax = { version = "0.6.0", features = ["walk"] }
-napi-derive = { version = "2.16.8", optional = true }
-napi = { version = "2.16.7", default-features = false, features = ["napi9", "serde-json", "tokio_rt"], optional = true }
+napi-derive = { version = "2.16.9", optional = true }
+napi = { version = "2.16.8", default-features = false, features = ["napi9", "serde-json", "tokio_rt"], optional = true }
 package_json_schema = "0.2.1"
 icu = "1.5.0"
 version-compare = "0.2"

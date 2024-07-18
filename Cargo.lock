@@ -1250,7 +1250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e310b3a6b5907f99202fcdb4960ff45b93735d7c7d96b760fcff8db2dc0e103d"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2576,7 +2576,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-node-tools"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
  "chrono",
  "execute",

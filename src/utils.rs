@@ -2,15 +2,22 @@
 #![allow(dead_code)]
 
 use regex::Regex;
-use std::env::temp_dir;
-use std::fs::{create_dir, File};
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
-use std::process::Command;
-use std::process::Stdio;
 
+#[cfg(test)]
+use std::fs::{create_dir, File};
+#[cfg(test)]
+use std::io::Write;
+
+#[cfg(test)]
+#[cfg(not(windows))]
+use std::os::unix::fs::PermissionsExt;
+
+#[cfg(test)]
 use super::manager::PackageManager;
+#[cfg(test)]
+use std::process::Command;
+#[cfg(test)]
+use std::process::Stdio;
 
 #[derive(Debug)]
 pub struct PackageScopeMetadata {
@@ -20,8 +27,10 @@ pub struct PackageScopeMetadata {
     pub path: Option<String>,
 }
 
+#[cfg(test)]
 struct Rng(u64);
 
+#[cfg(test)]
 impl Rng {
     const A: u64 = 6364136223846793005;
 
@@ -64,13 +73,14 @@ pub(crate) fn strip_trailing_newline(input: &String) -> String {
         .to_string()
 }
 
+#[cfg(test)]
 pub(crate) fn create_test_monorepo(
     package_manager: &PackageManager,
-) -> Result<PathBuf, std::io::Error> {
+) -> Result<std::path::PathBuf, std::io::Error> {
     let mut rng = Rng::from_seed(0);
     let rand_string = format!("{:016x}", rng.rand());
 
-    let temp_dir = temp_dir();
+    let temp_dir = std::env::temp_dir();
     let monorepo_temp_dir = temp_dir.join(format!("monorepo-{}", rand_string));
     let monorepo_package_json = monorepo_temp_dir.join("package.json");
 
@@ -83,6 +93,7 @@ pub(crate) fn create_test_monorepo(
     create_dir(&monorepo_package_a_dir)?;
     create_dir(&monorepo_package_b_dir)?;
 
+    #[cfg(not(windows))]
     std::fs::set_permissions(&monorepo_temp_dir, std::fs::Permissions::from_mode(0o777))?;
 
     let mut monorepo_package_json_file = File::create(&monorepo_package_json)?;

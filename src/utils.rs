@@ -121,20 +121,20 @@ pub(crate) fn create_test_monorepo(
         r#"
         {
             "name": "@scope/package-b",
-              "version": "1.0.0",
-              "description": "My new package B",
-              "main": "index.mjs",
-              "repository": {
-                "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
-                "type": "git"
-              },
-              "scripts": {
-                "test": "echo \"Error: no test specified\" && exit 1",
-                "dev": "node index.mjs"
-              },
-              "keywords": [],
-              "author": "",
-              "license": "ISC"
+            "version": "1.0.0",
+            "description": "My new package B",
+            "main": "index.mjs",
+            "repository": {
+              "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
+              "type": "git"
+            },
+            "scripts": {
+              "test": "echo \"Error: no test specified\" && exit 1",
+              "dev": "node index.mjs"
+            },
+            "keywords": [],
+            "author": "",
+            "license": "ISC"
         }"#
         .as_bytes(),
     )?;
@@ -148,13 +148,15 @@ pub(crate) fn create_test_monorepo(
             let pnpm_lock = monorepo_temp_dir.join("pnpm-lock.yaml");
             let pnpm_workspace = monorepo_temp_dir.join("pnpm-workspace.yaml");
 
-            File::create(&pnpm_lock)?;
-            let mut file = File::create(&pnpm_workspace)?;
-            file.write_all(
+            let mut lock_file = File::create(&pnpm_lock)?;
+            lock_file.write_all(r#"lockfileVersion: '9.0'"#.as_bytes())?;
+
+            let mut workspace_file = File::create(&pnpm_workspace)?;
+            workspace_file.write_all(
                 r#"
                 packages:
-                    - "packages/*"
-                "#
+                  - "packages/*"
+            "#
                 .as_bytes(),
             )?;
         }

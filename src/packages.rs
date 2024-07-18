@@ -1,9 +1,14 @@
 #![allow(clippy::all)]
+
+//! #Packages module
+//!
+//! The `packages` module is used to get the list of packages available in the monorepo.
 use execute::Execute;
 use package_json_schema::{PackageJson, Repository};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -73,6 +78,25 @@ pub struct PackageRepositoryInfo {
     pub domain: String,
     pub orga: String,
     pub project: String,
+}
+
+impl PackageInfo {
+    pub fn push_changed_file(&mut self, file: String) {
+        self.changed_files.push(file);
+    }
+
+    pub fn get_changed_files(&self) -> Vec<String> {
+        self.changed_files.to_vec()
+    }
+
+    pub fn extend_changed_files(&mut self, files: Vec<String>) {
+        self.changed_files.extend(files);
+    }
+
+    pub fn update_version(&mut self, version: String) {
+        self.version = version.to_string();
+        self.pkg_json["version"] = Value::String(version.to_string());
+    }
 }
 
 fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
@@ -171,8 +195,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),
     };
-    let package_manager = get_monorepo_package_manager(cwd);
-    //let project_root = get_project_root_path().unwrap();
+    let package_manager = get_monorepo_package_manager(Some(project_root.to_string()));
 
     return match package_manager {
         Some(PackageManager::Pnpm) => {
@@ -185,6 +208,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
 
             let mut command = Command::new("pnpm");
             command
+                .current_dir(&project_root)
                 .arg("list")
                 .arg("-r")
                 .arg("--depth")
@@ -365,4 +389,120 @@ pub fn get_changed_packages(sha: Option<String>, cwd: Option<String>) -> Vec<Pac
             pkgs
         })
         .collect::<Vec<PackageInfo>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::manager::PackageManager;
+    use crate::utils::create_test_monorepo;
+    use std::fs::{remove_dir_all, File};
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-a/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn monorepo_package_manager() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Pnpm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let package_manager = get_monorepo_package_manager(project_root);
+
+        assert_eq!(package_manager, Some(PackageManager::Pnpm));
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn npm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let packages = get_packages(project_root);
+
+        assert_eq!(packages.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn yarn_get_packages() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Yarn)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let packages = get_packages(project_root);
+
+        assert_eq!(packages.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn pnpm_get_packages() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Pnpm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let packages = get_packages(project_root);
+
+        assert_eq!(packages.len(), 3);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn monorepo_get_changed_packages() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let packages = get_changed_packages(Some("main".to_string()), project_root);
+
+        assert_eq!(packages.len(), 1);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
 }

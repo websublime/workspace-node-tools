@@ -40,20 +40,20 @@ pub enum Bump {
 #[cfg(feature = "napi")]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
-    packages: Vec<String>,
-    release_as: Bump,
-    fetch_all: Option<bool>,
-    fetch_tags: Option<bool>,
+    pub packages: Vec<String>,
+    pub release_as: Bump,
+    pub fetch_all: Option<bool>,
+    pub fetch_tags: Option<bool>,
     pub cwd: Option<String>,
 }
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
-    packages: Vec<String>,
-    release_as: Bump,
-    fetch_all: Option<bool>,
-    fetch_tags: Option<bool>,
+    pub packages: Vec<String>,
+    pub release_as: Bump,
+    pub fetch_all: Option<bool>,
+    pub fetch_tags: Option<bool>,
     pub cwd: Option<String>,
 }
 
@@ -203,8 +203,6 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
         bumps.push(bump.to_owned());
 
-        // TODO: sync need to update dependency version
-
         let sync_packages = sync_bumps(&bump, Some(root.to_string()));
 
         if sync_packages.len() > 0 {
@@ -217,6 +215,18 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             });
 
             bumps.extend(sync_bumps);
+        }
+    }
+
+    bumps
+}
+
+pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
+    let bumps = get_bumps(options);
+
+    if bumps.len() != 0 {
+        for _bump in &bumps {
+            todo!("Apply bump to the package");
         }
     }
 

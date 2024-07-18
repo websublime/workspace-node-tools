@@ -182,7 +182,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         let conventional = get_conventional_for_package(
             &package,
             options.fetch_all,
-            None,
+            Some(root.to_string()),
             &Some(ConventionalPackageOptions {
                 version: Some(version.to_string()),
                 title,

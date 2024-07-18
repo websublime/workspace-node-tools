@@ -483,6 +483,8 @@ mod tests {
         let conventional =
             get_conventional_for_package(package.unwrap(), None, Some(root.to_string()), &None);
 
+        dbg!(&conventional);
+
         assert_eq!(
             conventional
                 .changelog_output

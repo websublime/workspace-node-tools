@@ -18,7 +18,7 @@ use super::paths::get_project_root_path;
 
 #[cfg(feature = "napi")]
 #[napi(string_enum)]
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum Bump {
     Major,
     Minor,

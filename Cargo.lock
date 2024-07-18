@@ -2564,6 +2564,7 @@ dependencies = [
  "package_json_schema",
  "rand",
  "regex",
+ "semver",
  "serde",
  "serde_json",
  "vergen",

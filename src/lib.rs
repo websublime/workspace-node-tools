@@ -18,3 +18,5 @@ pub mod git;
 pub mod packages;
 
 pub mod conventional;
+
+pub mod bumps;

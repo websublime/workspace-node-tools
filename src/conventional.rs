@@ -478,12 +478,10 @@ mod tests {
         let ref root = project_root.unwrap().to_string();
 
         let packages = get_packages(Some(root.to_string()));
-        let package = packages.first();
+        let package = packages.iter().find(|pkg| pkg.name.contains("@scope/package-b"));
 
         let conventional =
             get_conventional_for_package(package.unwrap(), None, Some(root.to_string()), &None);
-
-        dbg!(&conventional);
 
         assert_eq!(
             conventional

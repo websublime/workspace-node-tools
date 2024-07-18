@@ -1,5 +1,6 @@
 #![warn(dead_code)]
 #![warn(unused_imports)]
+#![allow(clippy::all)]
 
 use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
@@ -17,7 +18,7 @@ use super::paths::get_project_root_path;
 
 #[cfg(feature = "napi")]
 #[napi(string_enum)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum Bump {
     Major,
     Minor,
@@ -35,7 +36,7 @@ pub enum Bump {
 }
 
 #[cfg(feature = "napi")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
     packages: Vec<String>,
     release_as: Bump,

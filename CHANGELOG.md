@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2024-07-18
+
+### 🐛 Bug Fixes
+
+- Main to build correctly
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+
 ## [1.0.1] - 2024-07-18
 
 ### ⚙️ Miscellaneous Tasks

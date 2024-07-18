@@ -63,85 +63,61 @@ pub fn detect_package_manager(path: &Path) -> Option<PackageManager> {
     None
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::time;
-    use std::{fs::{remove_file, File}, thread};
-
-    fn create_package_manager_file(path: &Path) -> Result<File, std::io::Error> {
-        let file = File::create(path)?;
-        thread::sleep(time::Duration::from_secs(1));
-        Ok(file)
-    }
-
-    fn delete_package_manager_file(path: &Path) -> Result<(), std::io::Error> {
-        remove_file(path)?;
-        thread::sleep(time::Duration::from_secs(1));
-        Ok(())
-    }
+    use crate::{paths::get_project_root_path, utils::create_test_monorepo};
+    use std::{fs::remove_dir_all, path::PathBuf};
 
     #[test]
     fn package_manager_for_npm_lock() -> Result<(), std::io::Error> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let npm_lock = path.join("package-lock.json");
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        create_package_manager_file(&npm_lock)?;
-
-        let package_manager = detect_package_manager(&path);
+        let package_manager =
+            detect_package_manager(&PathBuf::from(project_root.unwrap()).as_path());
 
         assert_eq!(package_manager, Some(PackageManager::Npm));
-
-        delete_package_manager_file(&npm_lock)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn package_manager_for_yarn_lock() -> Result<(), std::io::Error> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let yarn_lock = path.join("yarn.lock");
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Yarn)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        create_package_manager_file(&yarn_lock)?;
-
-        let package_manager = detect_package_manager(&path);
+        let package_manager =
+            detect_package_manager(&PathBuf::from(project_root.unwrap()).as_path());
 
         assert_eq!(package_manager, Some(PackageManager::Yarn));
-
-        delete_package_manager_file(&yarn_lock)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn package_manager_for_pnpm_lock() -> Result<(), std::io::Error> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let pnpm_lock = path.join("pnpm-lock.yaml");
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Pnpm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        create_package_manager_file(&pnpm_lock)?;
-
-        let package_manager = detect_package_manager(&path);
+        let package_manager =
+            detect_package_manager(&PathBuf::from(project_root.unwrap()).as_path());
 
         assert_eq!(package_manager, Some(PackageManager::Pnpm));
-
-        delete_package_manager_file(&pnpm_lock)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
     #[test]
     fn package_manager_for_bun_lock() -> Result<(), std::io::Error> {
-        let path = std::env::current_dir().expect("Current user home directory");
-        let bun_lock = path.join("bun.lockb");
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Bun)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        dbg!(&bun_lock);
-        dbg!(&path);
-
-        create_package_manager_file(&bun_lock)?;
-
-        let package_manager = detect_package_manager(&path);
+        let package_manager =
+            detect_package_manager(&PathBuf::from(project_root.unwrap()).as_path());
 
         assert_eq!(package_manager, Some(PackageManager::Bun));
-
-        delete_package_manager_file(&bun_lock)?;
+        remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 
@@ -161,4 +137,4 @@ mod tests {
 
         assert_eq!(package_manager.unwrap().to_string(), String::from(""));
     }
-}*/
+}

@@ -1,3 +1,6 @@
+//! # Conventional
+//!
+//! This module is responsible for generating changelog output for a package based on conventional commits.
 #![allow(clippy::all)]
 use git_cliff_core::{
     changelog::Changelog,
@@ -267,8 +270,8 @@ pub fn get_conventional_for_package(
         None => get_project_root_path(None).unwrap(),
     };
 
-    if no_fetch_all.is_none() {
-        git_fetch_all(Some(current_working_dir.to_string()), None).expect("Fetch all");
+    if no_fetch_all.is_some() {
+        git_fetch_all(Some(current_working_dir.to_string()), no_fetch_all).expect("Fetch all");
     }
 
     let tag_info = get_last_known_publish_tag_info_for_package(
@@ -355,4 +358,138 @@ pub fn get_conventional_for_package(
         serde_json::to_value(&conventional_config.git).unwrap();
 
     conventional_package
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::manager::PackageManager;
+    use crate::packages::get_packages;
+    use crate::paths::get_project_root_path;
+    use crate::utils::create_test_monorepo;
+    use std::fs::remove_dir_all;
+    use std::fs::File;
+    use std::io::Write;
+    use std::process::Command;
+    use std::process::Stdio;
+
+    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-b/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        let main = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("main")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git checkout problem");
+
+        main.wait_with_output()?;
+
+        let merge = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("merge")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git merge problem");
+
+        merge.wait_with_output()?;
+
+        let tag_b = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("tag")
+            .arg("-a")
+            .arg("@scope/package-b@1.1.0")
+            .arg("-m")
+            .arg("chore: release package-b@1.1.0")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git tag problem");
+
+        tag_b.wait_with_output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_conventional_for_package() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_packages(Some(root.to_string()));
+        let package = packages.first();
+
+        let conventional =
+            get_conventional_for_package(package.unwrap(), None, Some(root.to_string()), &None);
+
+        assert_eq!(conventional.package_info, package.unwrap().to_owned());
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_conventional_for_package_with_changes() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_packages(Some(root.to_string()));
+        let package = packages.first();
+
+        let conventional =
+            get_conventional_for_package(package.unwrap(), None, Some(root.to_string()), &None);
+
+        assert_eq!(
+            conventional
+                .changelog_output
+                .contains("Message to the world"),
+            true
+        );
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
 }

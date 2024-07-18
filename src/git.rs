@@ -167,6 +167,7 @@ pub fn git_previous_sha(cwd: Option<String>) -> String {
     let output = command.execute_output().unwrap();
 
     let hash = String::from_utf8(output.stdout).unwrap();
+
     strip_trailing_newline(&hash)
 }
 
@@ -703,79 +704,126 @@ pub fn get_last_known_publish_tag_info_for_all_packages(
         .collect::<Vec<Option<PublishTagInfo>>>()
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        manager::PackageManager, paths::get_project_root_path, utils::create_test_monorepo,
+    };
+    use std::fs::{remove_dir_all, File};
 
     #[test]
-    fn test_git_fetch_all() {
-        let result = git_fetch_all(None, None);
-        assert_eq!(result.unwrap(), true);
+    fn test_git_fetch_all() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let result = git_fetch_all(project_root, None)?;
+        assert_eq!(result, false);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_get_diverged_commit() {
-        let result = get_diverged_commit(String::from("0.9.0"), None);
-        dbg!(&result);
+    fn test_get_diverged_commit() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let result = get_diverged_commit(String::from("@scope/package-a@1.0.0"), project_root);
+
         assert!(result.is_some());
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_git_current_sha() {
-        let result = git_current_sha(None);
+    fn test_git_current_sha() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let result = git_current_sha(project_root);
         assert_eq!(result.is_empty(), false);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_git_previous_sha() {
-        let result = git_previous_sha(None);
-        dbg!(&result);
-        assert_eq!(result.is_empty(), false);
+    fn test_git_previous_sha() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let result = git_previous_sha(project_root);
+        assert_eq!(result.is_empty(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_git_workdir_unclean() {
-        let result = git_workdir_unclean(None);
-        assert_eq!(result, result);
+    fn test_git_workdir_unclean() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+        let js_path = monorepo_dir.join("packages/package-a/index.js");
+
+        let mut js_file = File::create(&js_path)?;
+        js_file.write_all(r#"export const message = "hello";"#.as_bytes())?;
+
+        let result = git_workdir_unclean(project_root);
+        assert_eq!(result, true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_git_branch_from_commit() {
-        let commit = git_current_sha(None);
-        let result = git_branch_from_commit(commit, None);
+    fn test_git_branch_from_commit() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let commit = git_current_sha(Some(project_root.as_ref().unwrap().to_string()));
+        let result = git_branch_from_commit(commit, project_root);
         assert_eq!(result.is_some(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_get_commits_since() {
+    fn test_get_commits_since() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
         let result = get_commits_since(
-            None,
+            project_root,
             Some(String::from("main")),
             Some(String::from("packages/package-a")),
         );
         let count = result.len();
-        assert_eq!(count, count);
+
+        assert_eq!(count, 0);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_get_local_tags() {
-        let result = get_remote_or_local_tags(None, Some(true));
+    fn test_get_local_tags() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let result = get_remote_or_local_tags(project_root, Some(true));
         let count = result.len();
-        assert_eq!(count, count);
+
+        assert_eq!(count, 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]
-    fn test_get_remote_tags() {
-        let result = get_remote_or_local_tags(None, Some(false));
-        let count = result.len();
-        assert_eq!(count, count);
-    }
+    fn test_git_all_files_changed_since_sha() -> Result<(), std::io::Error> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-    #[test]
-    fn test_git_all_files_changed_since_sha() {
-        let result = git_all_files_changed_since_sha(String::from("main"), None);
+        let result = git_all_files_changed_since_sha(String::from("main"), project_root);
         let count = result.len();
-        assert_eq!(count, count);
+
+        assert_eq!(count, 0);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
-}*/
+}

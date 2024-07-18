@@ -161,7 +161,7 @@ pub(crate) fn create_test_monorepo(
             )?;
         }
         PackageManager::Bun => {
-            let bun_lock = monorepo_temp_dir.join("bun.lock");
+            let bun_lock = monorepo_temp_dir.join("bun.lockb");
             File::create(&bun_lock)?;
         }
         PackageManager::Npm => {

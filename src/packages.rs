@@ -378,7 +378,7 @@ pub fn get_changed_packages(sha: Option<String>, cwd: Option<String>) -> Vec<Pac
                 .filter(|file| file.starts_with(&pkg.package_path))
                 .map(|file| {
                     let mut pkg_info: PackageInfo = pkg.to_owned();
-                    pkg_info.changed_files.push(file.to_string());
+                    pkg_info.push_changed_file(file.to_string());
 
                     pkg_info
                 })
@@ -400,6 +400,7 @@ mod tests {
     use std::fs::{remove_dir_all, File};
     use std::io::Write;
     use std::path::PathBuf;
+    use std::process::Command;
 
     fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let js_path = monorepo_dir.join("packages/package-a/index.js");
@@ -500,8 +501,12 @@ mod tests {
         create_package_change(monorepo_dir)?;
 
         let packages = get_changed_packages(Some("main".to_string()), project_root);
+        let package = packages.first();
+
+        let changed_files = package.unwrap().get_changed_files();
 
         assert_eq!(packages.len(), 1);
+        assert_eq!(changed_files.len(), 1);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

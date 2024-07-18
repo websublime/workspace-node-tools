@@ -1,3 +1,6 @@
+//! # Bumps
+//! 
+//! This module is responsible for managing the bumps in the monorepo.
 #![warn(dead_code)]
 #![warn(unused_imports)]
 #![allow(clippy::all)]
@@ -10,8 +13,7 @@ use std::path::PathBuf;
 
 use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
-use super::git::git_current_sha;
-use super::git::git_fetch_all;
+use super::git::{git_all_files_changed_since_sha, git_current_sha, git_fetch_all};
 use super::packages::get_packages;
 use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
@@ -176,8 +178,12 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             false => Some("# What changed?".to_string()),
         };
 
+        let changed_files =
+            git_all_files_changed_since_sha(String::from("main"), Some(root.to_string()));
         let ref version = semversion.to_string();
+
         package.update_version(version.to_string());
+        package.extend_changed_files(changed_files);
 
         let conventional = get_conventional_for_package(
             &package,
@@ -195,8 +201,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             release_as,
             conventional,
         };
-
-        bumps.push(bump.clone());
+        bumps.push(bump.to_owned());
 
         // TODO: sync need to update dependency version
 
@@ -216,4 +221,89 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     }
 
     bumps
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::manager::PackageManager;
+    use crate::packages::get_changed_packages;
+    use crate::paths::get_project_root_path;
+    use crate::utils::create_test_monorepo;
+    use std::fs::remove_dir_all;
+    use std::fs::File;
+    use std::io::Write;
+    use std::process::Command;
+    use std::process::Stdio;
+
+    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-b/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        let bumps = get_bumps(BumpOptions {
+            packages,
+            release_as: Bump::Minor,
+            fetch_all: None,
+            fetch_tags: None,
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
 }

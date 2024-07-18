@@ -171,6 +171,40 @@ pub fn git_previous_sha(cwd: Option<String>) -> String {
     strip_trailing_newline(&hash)
 }
 
+/// Get the first commit in a branch
+pub fn git_first_sha(cwd: Option<String>, branch: Option<String>) -> String {
+    let current_working_dir = match cwd {
+        Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let branch = match branch {
+        Some(branch) => branch,
+        None => String::from("main"),
+    };
+
+    let mut command = Command::new("git");
+    command
+        .arg("log")
+        .arg(format!("{}..HEAD", branch))
+        .arg("--online")
+        .arg("--pretty=format:%h")
+        .arg("|")
+        .arg("tail")
+        .arg("-1");
+
+    command.current_dir(&current_working_dir);
+
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let output = command.execute_output().unwrap();
+
+    let hash = String::from_utf8(output.stdout).unwrap();
+
+    strip_trailing_newline(&hash)
+}
+
 /// Verify if as uncommited changes in the current working directory
 pub fn git_workdir_unclean(cwd: Option<String>) -> bool {
     let current_working_dir = match cwd {

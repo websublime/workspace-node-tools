@@ -90,7 +90,13 @@ impl PackageInfo {
     }
 
     pub fn extend_changed_files(&mut self, files: Vec<String>) {
-        self.changed_files.extend(files);
+        let founded_files = files
+            .iter()
+            .filter(|file| file.starts_with(&self.package_path))
+            .map(|file| file.to_string())
+            .collect::<Vec<String>>();
+
+        self.changed_files.extend(founded_files);
     }
 
     pub fn update_version(&mut self, version: String) {

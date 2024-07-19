@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2024-07-19
+
+### 🐛 Bug Fixes
+
+- Avoid symbolic links and transforma paths to canonical usage
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Merge pull request #16 from websublime/fix/canonical-paths
+- Bump version
+
 ## [1.0.4] - 2024-07-19
 
 ### 🐛 Bug Fixes

@@ -34,7 +34,10 @@ pub fn get_project_root_path(root: Option<PathBuf>) -> Option<String> {
         }
     };
 
-    Some(project_root)
+    let canonic_path = &std::fs::canonicalize(Path::new(&project_root)).unwrap();
+    let root = canonic_path.as_path().display().to_string();
+
+    Some(root)
 }
 
 /// Get the git root directory.

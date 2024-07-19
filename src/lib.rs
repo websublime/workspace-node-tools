@@ -20,3 +20,5 @@ pub mod packages;
 pub mod conventional;
 
 pub mod bumps;
+
+pub mod changes;

@@ -255,6 +255,27 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     vec![]
 }
 
+pub fn change_exist(branch: String, cwd: Option<String>) -> bool {
+    let ref root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let root_path = Path::new(root);
+    let ref changes_path = root_path.join(String::from(".changes.json"));
+
+    if changes_path.exists() {
+        let changes_file = File::open(changes_path).unwrap();
+        let changes_reader = BufReader::new(changes_file);
+
+        let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
+
+        return changes.changes.contains_key(&branch);
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -378,6 +399,32 @@ mod tests {
         let changes = get_change(String::from("main"), Some(root.to_string()));
 
         assert_eq!(changes.len(), 1);
+        assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_change_exist() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        let change = Change {
+            package: String::from("test-package"),
+            release_as: String::from("1.0.0"),
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+        add_change(&change, Some(root.to_string()));
+
+        let result = change_exist(String::from("main"), Some(root.to_string()));
+
+        assert_eq!(result, true);
         assert_eq!(changes_path.is_file(), true);
         remove_dir_all(&monorepo_dir)?;
         Ok(())

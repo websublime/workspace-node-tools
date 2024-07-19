@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.8] - 2024-07-19
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Make changes type available
+- Merge pull request #19 from websublime/feature/changes-type
+
 ## [1.0.7] - 2024-07-19
 
 ### 🚀 Features

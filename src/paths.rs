@@ -24,12 +24,12 @@ pub fn get_project_root_path(root: Option<PathBuf>) -> Option<String> {
     };
     let current_path = current_dir.as_path();
 
-    let git_root_dir = get_git_root_dir(&current_path);
+    let git_root_dir = walk_reverse_dir(&current_path);
 
     let project_root = match git_root_dir {
         Some(current) => current,
         None => {
-            let search_root = walk_reverse_dir(&current_path);
+            let search_root = get_git_root_dir(&current_path);
             search_root.unwrap_or(current_path.to_str().unwrap().to_string())
         }
     };

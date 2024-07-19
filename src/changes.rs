@@ -25,6 +25,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::bumps::Bump;
+
 use super::git::git_current_branch;
 use super::paths::get_project_root_path;
 
@@ -75,7 +77,7 @@ pub struct Changes {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Change {
     pub package: String,
-    pub release_as: String,
+    pub release_as: Bump,
     pub deploy: Vec<String>,
 }
 
@@ -84,7 +86,7 @@ pub struct Change {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Change {
     pub package: String,
-    pub release_as: String,
+    pub release_as: Bump,
     pub deploy: Vec<String>,
 }
 
@@ -155,7 +157,7 @@ pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
             let branch_changes = changes.changes.get_mut(&branch).unwrap();
             branch_changes.push(Change {
                 package: change.package.to_string(),
-                release_as: change.release_as.to_string(),
+                release_as: change.release_as,
                 deploy: change.deploy.to_vec(),
             });
         } else {
@@ -163,7 +165,7 @@ pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
                 branch,
                 vec![Change {
                     package: change.package.to_string(),
-                    release_as: change.release_as.to_string(),
+                    release_as: change.release_as,
                     deploy: change.deploy.to_vec(),
                 }],
             );
@@ -210,7 +212,7 @@ pub fn remove_change(branch_name: String, cwd: Option<String>) -> bool {
     false
 }
 
-pub fn get_changes(cwd: Option<String>) -> ChangesData {
+pub fn get_changes(cwd: Option<String>) -> Changes {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),
@@ -224,10 +226,15 @@ pub fn get_changes(cwd: Option<String>) -> ChangesData {
         let changes_reader = BufReader::new(changes_file);
 
         let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
-        return changes.changes;
+
+        return Changes {
+            changes: changes.changes,
+        };
     }
 
-    ChangesData::new()
+    Changes {
+        changes: ChangesData::new(),
+    }
 }
 
 pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
@@ -310,7 +317,7 @@ mod tests {
 
         let change = Change {
             package: String::from("test-package"),
-            release_as: String::from("1.0.0"),
+            release_as: Bump::Major,
             deploy: vec![String::from("production")],
         };
 
@@ -334,7 +341,7 @@ mod tests {
 
         let change = Change {
             package: String::from("test-package"),
-            release_as: String::from("1.0.0"),
+            release_as: Bump::Major,
             deploy: vec![String::from("production")],
         };
 
@@ -360,7 +367,7 @@ mod tests {
 
         let change = Change {
             package: String::from("test-package"),
-            release_as: String::from("1.0.0"),
+            release_as: Bump::Major,
             deploy: vec![String::from("production")],
         };
 
@@ -371,8 +378,8 @@ mod tests {
 
         let changes = get_changes(Some(root.to_string()));
 
-        assert_eq!(changes.contains_key(&String::from("main")), true);
-        assert_eq!(changes.get(&String::from("main")).unwrap().len(), 1);
+        assert_eq!(changes.changes.contains_key(&String::from("main")), true);
+        assert_eq!(changes.changes.get(&String::from("main")).unwrap().len(), 1);
         assert_eq!(changes_path.is_file(), true);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -387,7 +394,7 @@ mod tests {
 
         let change = Change {
             package: String::from("test-package"),
-            release_as: String::from("1.0.0"),
+            release_as: Bump::Major,
             deploy: vec![String::from("production")],
         };
 
@@ -413,7 +420,7 @@ mod tests {
 
         let change = Change {
             package: String::from("test-package"),
-            release_as: String::from("1.0.0"),
+            release_as: Bump::Major,
             deploy: vec![String::from("production")],
         };
 

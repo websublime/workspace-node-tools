@@ -4,9 +4,19 @@
 use regex::Regex;
 
 #[cfg(test)]
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
+
+#[cfg(test)]
 use std::fs::{create_dir, File};
 #[cfg(test)]
 use std::io::Write;
+
+#[cfg(test)]
+use rand::distributions::Alphanumeric;
+#[cfg(test)]
+use rand::{thread_rng, Rng};
 
 #[cfg(test)]
 #[cfg(not(windows))]
@@ -25,23 +35,6 @@ pub struct PackageScopeMetadata {
     pub name: String,
     pub version: String,
     pub path: Option<String>,
-}
-
-#[cfg(test)]
-struct Rng(u64);
-
-#[cfg(test)]
-impl Rng {
-    const A: u64 = 6364136223846793005;
-
-    fn rand(&mut self) -> u64 {
-        self.0 = self.0.wrapping_mul(Self::A).wrapping_add(1);
-        self.0
-    }
-
-    fn from_seed(seed: u64) -> Self {
-        Self(seed ^ 3141592653589793238)
-    }
 }
 
 /// Extracts the package scope name and version from a package name.
@@ -77,8 +70,11 @@ pub(crate) fn strip_trailing_newline(input: &String) -> String {
 pub(crate) fn create_test_monorepo(
     package_manager: &PackageManager,
 ) -> Result<std::path::PathBuf, std::io::Error> {
-    let mut rng = Rng::from_seed(0);
-    let rand_string = format!("{:016x}", rng.rand());
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
 
     let temp_dir = std::env::temp_dir();
     let monorepo_temp_dir = temp_dir.join(format!("monorepo-{}", rand_string));
@@ -271,5 +267,8 @@ pub(crate) fn create_test_monorepo(
 
     tag_b.wait_with_output()?;
 
-    Ok(monorepo_temp_dir)
+    let canonic_path = &std::fs::canonicalize(Path::new(&monorepo_temp_dir)).unwrap();
+    let root = canonic_path.as_path().display().to_string();
+
+    Ok(PathBuf::from(root))
 }

@@ -2585,6 +2585,7 @@ dependencies = [
  "napi",
  "napi-derive",
  "package_json_schema",
+ "rand",
  "regex",
  "semver",
  "serde",

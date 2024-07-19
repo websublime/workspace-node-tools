@@ -2576,7 +2576,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-node-tools"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "chrono",
  "execute",

@@ -38,6 +38,7 @@ pub enum Bump {
 }
 
 #[cfg(feature = "napi")]
+#[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
     pub packages: Vec<String>,
@@ -67,6 +68,7 @@ pub struct BumpPackage {
 }
 
 #[cfg(feature = "napi")]
+#[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BumpPackage {
     pub from: String,

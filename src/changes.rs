@@ -6,6 +6,7 @@
 //! The changes are stored in a `.changes.json` file in the root of the project.
 //!
 //! # Example
+//! ```json
 //! {
 //!   "message": "chore(release): release new version",
 //!   "changes": {
@@ -16,6 +17,7 @@
 //!       }],
 //!   }
 //!}
+//!```
 use serde::{Deserialize, Serialize};
 use std::io::BufWriter;
 use std::{
@@ -30,10 +32,12 @@ use crate::bumps::Bump;
 use super::git::git_current_branch;
 use super::paths::get_project_root_path;
 
+/// Dynamic data structure to store changes
 type ChangesData = BTreeMap<String, Vec<Change>>;
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// Options to initialize the changes file
 pub struct ChangesOptions {
     pub message: Option<String>,
 }
@@ -47,6 +51,7 @@ pub struct ChangesOptions {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// Data structure to store changes file
 pub struct ChangesFileData {
     pub message: Option<String>,
     pub changes: ChangesData,
@@ -62,6 +67,7 @@ pub struct ChangesFileData {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// Data structure to store changes
 pub struct Changes {
     pub changes: ChangesData,
 }
@@ -75,6 +81,7 @@ pub struct Changes {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// Data structure to store a change
 pub struct Change {
     pub package: String,
     pub release_as: Bump,
@@ -90,6 +97,8 @@ pub struct Change {
     pub deploy: Vec<String>,
 }
 
+/// Initialize the changes file. If the file does not exist, it will create it with the default message.
+/// If the file exists, it will return the content of the file.
 pub fn init_changes(
     cwd: Option<String>,
     change_options: &Option<ChangesOptions>,
@@ -131,6 +140,7 @@ pub fn init_changes(
     }
 }
 
+/// Add a change to the changes file in the root of the project.
 pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -182,6 +192,7 @@ pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
     false
 }
 
+/// Remove a change from the changes file in the root of the project.
 pub fn remove_change(branch_name: String, cwd: Option<String>) -> bool {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -212,6 +223,7 @@ pub fn remove_change(branch_name: String, cwd: Option<String>) -> bool {
     false
 }
 
+/// Get all changes from the changes file in the root of the project.
 pub fn get_changes(cwd: Option<String>) -> Changes {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -237,6 +249,7 @@ pub fn get_changes(cwd: Option<String>) -> Changes {
     }
 }
 
+/// Get all changes for a specific branch from the changes file in the root of the project.
 pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -262,6 +275,7 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     vec![]
 }
 
+/// Check if a change exists in the changes file in the root of the project.
 pub fn change_exist(branch: String, cwd: Option<String>) -> bool {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -281,6 +295,19 @@ pub fn change_exist(branch: String, cwd: Option<String>) -> bool {
     }
 
     false
+}
+
+/// Check if a changes file exists in the root of the project.
+pub fn changes_file_exist(cwd: Option<String>) -> bool {
+    let ref root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let root_path = Path::new(root);
+    let ref changes_path = root_path.join(String::from(".changes.json"));
+
+    changes_path.exists()
 }
 
 #[cfg(test)]
@@ -433,6 +460,22 @@ mod tests {
 
         assert_eq!(result, true);
         assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_changes_file_exist() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+        let result = changes_file_exist(Some(root.to_string()));
+
+        assert_eq!(result, false);
+        assert_eq!(changes_path.is_file(), false);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

@@ -34,6 +34,7 @@ pub struct ConventionalPackage {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A struct that represents a conventional package
 pub struct ConventionalPackage {
     pub package_info: PackageInfo,
     pub conventional_config: Value,
@@ -51,11 +52,13 @@ pub struct ConventionalPackageOptions {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone)]
+/// A struct that represents options for a conventional package
 pub struct ConventionalPackageOptions {
     pub version: Option<String>,
     pub title: Option<String>,
 }
 
+/// Process commits for groupint type, extracting data
 fn process_commits<'a>(commits: &Vec<Commit>, config: &GitConfig) -> Vec<GitCommit<'a>> {
     commits
         .iter()
@@ -78,6 +81,7 @@ fn process_commits<'a>(commits: &Vec<Commit>, config: &GitConfig) -> Vec<GitComm
         .collect::<Vec<GitCommit>>()
 }
 
+/// Defines the config for conventional, template usage for changelog
 fn define_config(
     owner: String,
     repo: String,
@@ -239,6 +243,7 @@ fn define_config(
     cliff_config
 }
 
+/// Generate changelog output
 fn generate_changelog(
     commits: &Vec<GitCommit>,
     config: &Config,

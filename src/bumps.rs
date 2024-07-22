@@ -30,6 +30,7 @@ pub enum Bump {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, Copy, PartialEq)]
+/// Enum representing the type of bump to be performed.
 pub enum Bump {
     Major,
     Minor,
@@ -50,6 +51,7 @@ pub struct BumpOptions {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+/// Struct representing the options for the bump operation.
 pub struct BumpOptions {
     pub packages: Vec<String>,
     pub release_as: Bump,
@@ -60,6 +62,7 @@ pub struct BumpOptions {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// Struct representing the bump package.
 pub struct BumpPackage {
     pub from: String,
     pub to: String,
@@ -78,6 +81,7 @@ pub struct BumpPackage {
 }
 
 impl Bump {
+    /// Bumps the version of the package to major.
     fn bump_major(version: String) -> SemVersion {
         let mut sem_version = SemVersion::parse(&version).unwrap();
         sem_version.major += 1;
@@ -88,6 +92,7 @@ impl Bump {
         sem_version
     }
 
+    /// Bumps the version of the package to minor.
     fn bump_minor(version: String) -> SemVersion {
         let mut sem_version = SemVersion::parse(&version).unwrap();
         sem_version.minor += 1;
@@ -97,6 +102,7 @@ impl Bump {
         sem_version
     }
 
+    /// Bumps the version of the package to patch.
     fn bump_patch(version: String) -> SemVersion {
         let mut sem_version = SemVersion::parse(&version).unwrap();
         sem_version.patch += 1;
@@ -105,6 +111,7 @@ impl Bump {
         sem_version
     }
 
+    /// Bumps the version of the package to snapshot appending the sha to the version.
     fn bump_snapshot(version: String) -> SemVersion {
         let sha = git_current_sha(None);
         let alpha = format!("alpha.{}", sha);
@@ -116,6 +123,7 @@ impl Bump {
     }
 }
 
+/// Bumps the version of dev-dependencies and dependencies.
 pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String> {
     get_packages(cwd)
         .iter()
@@ -139,6 +147,7 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
         .collect::<Vec<String>>()
 }
 
+/// Get bumps version of the package.
 pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),

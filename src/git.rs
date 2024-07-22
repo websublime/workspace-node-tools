@@ -33,6 +33,7 @@ pub struct Commit {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A struct that represents a commit information
 pub struct Commit {
     pub hash: String,
     pub author_name: String,
@@ -51,6 +52,7 @@ pub struct RemoteTags {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A struct that represents a remote tag information
 pub struct RemoteTags {
     pub hash: String,
     pub tag: String,
@@ -67,12 +69,14 @@ pub struct PublishTagInfo {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// A struct that represents a publish tag information
 pub struct PublishTagInfo {
     pub hash: String,
     pub tag: String,
     pub package: String,
 }
 
+/// Fetch everything from origin including tags
 pub fn git_fetch_all(
     cwd: Option<String>,
     fetch_tags: Option<bool>,
@@ -421,7 +425,7 @@ pub fn git_all_files_changed_since_sha(sha: String, cwd: Option<String>) -> Vec<
         .arg("--no-pager")
         .arg("diff")
         .arg("--name-only")
-        .arg(format!("{}..", sha));
+        .arg(format!("{}", sha));
     command.current_dir(&current_working_dir);
 
     command.stdout(Stdio::piped());

@@ -19,6 +19,7 @@ use super::manager::{detect_package_manager, PackageManager};
 use super::paths::get_project_root_path;
 
 #[derive(Debug, Deserialize, Serialize)]
+/// A struct that represents a pnpm workspace.
 struct PnpmInfo {
     pub name: String,
     pub path: String,
@@ -26,6 +27,7 @@ struct PnpmInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+/// A struct that represents a yarn workspace.
 struct PkgJson {
     pub workspaces: Vec<String>,
 }
@@ -49,6 +51,7 @@ pub struct PackageInfo {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+/// A struct that represents a package in the monorepo.
 pub struct PackageInfo {
     pub name: String,
     pub private: bool,
@@ -74,6 +77,7 @@ pub struct PackageRepositoryInfo {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+/// A struct that represents the repository information of a package.
 pub struct PackageRepositoryInfo {
     pub domain: String,
     pub orga: String,
@@ -81,14 +85,17 @@ pub struct PackageRepositoryInfo {
 }
 
 impl PackageInfo {
+    /// Pushes a changed file to the list of changed files.
     pub fn push_changed_file(&mut self, file: String) {
         self.changed_files.push(file);
     }
 
+    /// Returns the list of changed files.
     pub fn get_changed_files(&self) -> Vec<String> {
         self.changed_files.to_vec()
     }
 
+    /// Extends the list of changed files with the provided list.
     pub fn extend_changed_files(&mut self, files: Vec<String>) {
         let founded_files = files
             .iter()
@@ -99,12 +106,14 @@ impl PackageInfo {
         self.changed_files.extend(founded_files);
     }
 
+    /// Updates the version of the package.
     pub fn update_version(&mut self, version: String) {
         self.version = version.to_string();
         self.pkg_json["version"] = Value::String(version.to_string());
     }
 }
 
+/// Returns package info domain, scope and repository name.
 fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
     let regex = Regex::new(
         r"(?m)((?<protocol>[a-z]+)://)((?<domain>[^/]*)/)(?<org>([^/]*)/)(?<project>(.*))(\.git)?",

@@ -1,3 +1,4 @@
+#![doc(html_logo_url = "https://avatars.githubusercontent.com/u/2073802?s=200&v=4")]
 //! # Workspace node tools
 //!
 //! This crate provides a set of tools to work with node workspaces.

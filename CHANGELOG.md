@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.9] - 2024-07-22
+
+### 🚀 Features
+
+- Change file exist check
+- Prepend to changelog
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Version maintenance
+- Merge pull request #20 from websublime/feature/docs-and-change-file-exist
+
 ## [1.0.8] - 2024-07-19
 
 ### ⚙️ Miscellaneous Tasks

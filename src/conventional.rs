@@ -13,6 +13,7 @@ use git_cliff_core::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::fs::read_to_string;
 use std::path::PathBuf;
 
 use super::git::{
@@ -263,6 +264,30 @@ fn generate_changelog(
     String::from_utf8(changelog_output).unwrap_or_default()
 }
 
+/// Prepend changelog output
+fn prepend_generate_changelog(
+    commits: &Vec<GitCommit>,
+    config: &Config,
+    changelog_content: &String,
+    version: Option<String>,
+) -> String {
+    let releases = Release {
+        version,
+        commits: commits.to_vec().to_owned(),
+        ..Release::default()
+    };
+
+    let changelog = Changelog::new(vec![releases], config);
+    let mut changelog_output = Vec::new();
+
+    changelog
+        .unwrap()
+        .prepend(changelog_content.to_string(), &mut changelog_output)
+        .unwrap();
+
+    String::from_utf8(changelog_output).unwrap_or_default()
+}
+
 /// Give info about commits in a package, generate changelog output
 pub fn get_conventional_for_package(
     package_info: &PackageInfo,
@@ -274,6 +299,9 @@ pub fn get_conventional_for_package(
         Some(dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),
     };
+
+    let changelog_dir =
+        PathBuf::from(package_info.package_path.to_string()).join(String::from("CHANGELOG.md"));
 
     if no_fetch_all.is_some() {
         git_fetch_all(Some(current_working_dir.to_string()), no_fetch_all).expect("Fetch all");
@@ -349,11 +377,22 @@ pub fn get_conventional_for_package(
 
     let conventional_commits = process_commits(&commits_since, &conventional_config.git);
 
-    let changelog = generate_changelog(
-        &conventional_commits,
-        &conventional_config,
-        conventional_default_options.version,
-    );
+    let changelog = match changelog_dir.exists() {
+        true => {
+            let changelog_content = read_to_string(&changelog_dir).unwrap();
+            prepend_generate_changelog(
+                &conventional_commits,
+                &conventional_config,
+                &changelog_content,
+                conventional_default_options.version,
+            )
+        }
+        false => generate_changelog(
+            &conventional_commits,
+            &conventional_config,
+            conventional_default_options.version,
+        ),
+    };
 
     let changelog_output = &changelog.to_string();
     conventional_package.changelog_output = changelog_output.to_string();

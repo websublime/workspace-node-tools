@@ -18,6 +18,7 @@ pub enum PackageManager {
 
 #[cfg(not(feature = "napi"))]
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Package manager used in the monorepo.
 pub enum PackageManager {
     Npm,
     Yarn,

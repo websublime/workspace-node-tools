@@ -4,24 +4,28 @@
 [![Docs.rs](https://docs.rs/workspace-node-tools/badge.svg)](https://docs.rs/workspace-node-tools)
 [![CI](https://github.com/websublime/workspace-node-tools/workflows/CI/badge.svg)](https://github.com/websublime/workspace-node-tools/actions)
 
+## About
+
+This is a tool to help manage packages in a monorepo style. It can give info about packages existence, package manager defined (node), git helpers to check which package as changes, manage those changes thur a file (.changes.json), give output of conventional commit and changelog generation.
+
 ## Installation
 
 `cargo install workspace-node-tools`
 
 ### Cargo
 
-* Install the rust toolchain in order to have cargo installed by following
+- Install the rust toolchain in order to have cargo installed by following
   [this](https://www.rust-lang.org/tools/install) guide.
-* run `cargo install workspace-node-tools`
+- run `cargo install workspace-node-tools`
 
 ## License
 
 Licensed under either of
 
- * Apache License, Version 2.0
-   ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license
-   ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0
+  ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license
+  ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
 

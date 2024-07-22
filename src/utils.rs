@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 use std::path::Path;
@@ -29,7 +30,8 @@ use std::process::Command;
 #[cfg(test)]
 use std::process::Stdio;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Package scope metadata extracted from a package name.
 pub struct PackageScopeMetadata {
     pub full: String,
     pub name: String,
@@ -57,6 +59,7 @@ pub(crate) fn package_scope_name_version(pkg_name: &str) -> Option<PackageScopeM
     None
 }
 
+/// Strips the trailing newline from a string.
 pub(crate) fn strip_trailing_newline(input: &String) -> String {
     input
         .strip_suffix("\r\n")

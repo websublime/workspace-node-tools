@@ -5,12 +5,16 @@
 //! # Bumps
 //!
 //! This module is responsible for managing the bumps in the monorepo.
+use execute::Execute;
 use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
+use super::changes::init_changes;
 use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
 use super::git::{git_all_files_changed_since_sha, git_current_sha, git_fetch_all};
@@ -233,15 +237,67 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
 }
 
 pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
-    let bumps = get_bumps(options);
+    let bumps = get_bumps(options.to_owned());
+
+    let ref root = match options.cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let ref changes_data = init_changes(Some(root.to_string()), &None);
 
     if bumps.len() != 0 {
-        for _bump in &bumps {
+        for bump in &bumps {
+            let ref bump_pkg_json_file_path =
+                PathBuf::from(bump.conventional.package_info.package_json_path.to_string());
+            let ref bump_changelog_file_path =
+                PathBuf::from(bump.conventional.package_info.package_path.to_string())
+                    .join(String::from("CHANGELOG.md"));
+
+            // Write bump_pkg_json_file_path
+            let bump_pkg_json_file = std::fs::File::open(bump_pkg_json_file_path).unwrap();
+            let pkg_json_writer = std::io::BufWriter::new(bump_pkg_json_file);
+            serde_json::to_writer_pretty(pkg_json_writer, &bump.conventional.package_info.pkg_json)
+                .unwrap();
+
+            // Write bump_changelog_file_path
+            let mut bump_changelog_file = std::fs::File::open(bump_changelog_file_path).unwrap();
+            bump_changelog_file
+                .write_all(bump.conventional.changelog_output.as_bytes())
+                .unwrap();
+
             todo!("Apply bump to the package");
         }
     }
 
     bumps
+}
+
+fn define_git_config(username: &String, email: &String, cwd: String) {
+    let mut git_config = Command::new("git");
+
+    git_config
+        .current_dir(cwd.to_string())
+        .arg("config")
+        .arg("user.name")
+        .arg(username);
+
+    git_config.stdout(Stdio::piped());
+    git_config.stderr(Stdio::piped());
+
+    let output = git_config.execute_output().unwrap();
+
+    let mut git_config = Command::new("git");
+    git_config
+        .current_dir(cwd.to_string())
+        .arg("config")
+        .arg("user.email")
+        .arg(email);
+
+    git_config.stdout(Stdio::piped());
+    git_config.stderr(Stdio::piped());
+
+    let output = git_config.execute_output().unwrap();
 }
 
 #[cfg(test)]

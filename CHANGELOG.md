@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.10] - 2024-07-23
+
+### 🚀 Features
+
+- Apply bumps
+- New git commands and sync dependencies implementation
+- Apply_bumps ability to push changes
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Init sync dependencies
+- Docs for get_bumps and apply_bumps
+- Version maintenance
+- Merge pull request #21 from websublime/feature/apply-changes
+
 ## [1.0.9] - 2024-07-22
 
 ### 🚀 Features

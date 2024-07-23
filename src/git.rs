@@ -76,6 +76,77 @@ pub struct PublishTagInfo {
     pub package: String,
 }
 
+/// Stage all uncommitted changes
+pub fn git_add_all(cwd: &String) -> Result<bool, std::io::Error> {
+    let mut git_add = Command::new("git");
+
+    git_add.current_dir(cwd.to_string()).arg("add").arg(".");
+
+    git_add.stdout(Stdio::piped());
+    git_add.stderr(Stdio::piped());
+
+    let output = git_add.execute_output().unwrap();
+
+    if output.status.success() {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Add a file to the git stage
+pub fn git_add(cwd: &String, file: &String) -> Result<bool, std::io::Error> {
+    let mut git_add = Command::new("git");
+
+    git_add.current_dir(cwd.to_string()).arg("add").arg(file);
+
+    git_add.stdout(Stdio::piped());
+    git_add.stderr(Stdio::piped());
+
+    let output = git_add.execute_output().unwrap();
+
+    if output.status.success() {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Configure git user name and email
+pub fn git_config(username: &String, email: &String, cwd: &String) -> Result<bool, std::io::Error> {
+    let mut git_config_user = Command::new("git");
+
+    git_config_user
+        .current_dir(cwd.to_string())
+        .arg("config")
+        .arg("user.name")
+        .arg(username);
+
+    git_config_user.stdout(Stdio::piped());
+    git_config_user.stderr(Stdio::piped());
+
+    let output_user = git_config_user.execute_output().unwrap();
+
+    let mut git_config_email = Command::new("git");
+    git_config_email
+        .current_dir(cwd.to_string())
+        .arg("config")
+        .arg("user.email")
+        .arg(email);
+
+    git_config_email.stdout(Stdio::piped());
+    git_config_email.stderr(Stdio::piped());
+
+    let output_email = git_config_email.execute_output().unwrap();
+    let status = output_user.status.success() == output_email.status.success();
+
+    if status {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 /// Fetch everything from origin including tags
 pub fn git_fetch_all(
     cwd: Option<String>,

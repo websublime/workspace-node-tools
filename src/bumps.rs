@@ -231,7 +231,8 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
         .collect::<Vec<String>>()
 }
 
-/// Get bumps version of the package.
+/// Get bumps version of the package. If sync_deps is true, it will also sync the dependencies and dev-dependencies.
+/// It will also commit the changes to git.
 pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -326,6 +327,8 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     bumps
 }
 
+/// Apply version bumps, commit and push changes. Returns a list of packages that have been updated.
+/// Also generate changelog file and update dependencies and devDependencies in package.json.
 pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),

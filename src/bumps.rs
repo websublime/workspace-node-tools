@@ -17,7 +17,7 @@ use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
 use super::git::{
     git_add, git_add_all, git_all_files_changed_since_sha, git_commit, git_config, git_current_sha,
-    git_fetch_all, git_tag,
+    git_fetch_all, git_push, git_tag,
 };
 use super::packages::get_packages;
 use super::packages::PackageInfo;
@@ -52,6 +52,8 @@ pub struct BumpOptions {
     pub release_as: Bump,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
+    pub sync_deps: Option<bool>,
+    pub push: Option<bool>,
     pub cwd: Option<String>,
 }
 
@@ -64,6 +66,8 @@ pub struct BumpOptions {
     pub release_as: Bump,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
+    pub sync_deps: Option<bool>,
+    pub push: Option<bool>,
     pub cwd: Option<String>,
 }
 
@@ -299,19 +303,23 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
         bumps.push(bump.to_owned());
 
-        let sync_packages = sync_bumps(&bump, Some(root.to_string()));
+        if options.sync_deps.unwrap_or(false) {
+            let sync_packages = sync_bumps(&bump, Some(root.to_string()));
 
-        if sync_packages.len() > 0 {
-            let sync_bumps = get_bumps(BumpOptions {
-                packages: sync_packages,
-                since: Some(since.to_string()),
-                release_as: Bump::Patch,
-                fetch_all: options.fetch_all,
-                fetch_tags: options.fetch_tags,
-                cwd: Some(root.to_string()),
-            });
+            if sync_packages.len() > 0 {
+                let sync_bumps = get_bumps(BumpOptions {
+                    packages: sync_packages,
+                    since: Some(since.to_string()),
+                    release_as: Bump::Patch,
+                    fetch_all: options.fetch_all,
+                    fetch_tags: options.fetch_tags,
+                    sync_deps: Some(true),
+                    push: Some(false),
+                    cwd: Some(root.to_string()),
+                });
 
-            bumps.extend(sync_bumps);
+                bumps.extend(sync_bumps);
+            }
         }
     }
 
@@ -388,6 +396,10 @@ pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
                 Some(root.to_string()),
             )
             .unwrap();
+
+            if options.push.unwrap_or(false) {
+                git_push(Some(root.to_string()), Some(true)).unwrap();
+            }
         }
     }
 
@@ -471,6 +483,8 @@ mod tests {
             release_as: Bump::Minor,
             fetch_all: None,
             fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
             cwd: Some(root.to_string()),
         });
 
@@ -519,6 +533,8 @@ mod tests {
             release_as: Bump::Minor,
             fetch_all: None,
             fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
             cwd: Some(root.to_string()),
         };
 

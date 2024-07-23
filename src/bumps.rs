@@ -9,15 +9,17 @@ use execute::Execute;
 use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use super::changes::init_changes;
 use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
-use super::git::{git_all_files_changed_since_sha, git_current_sha, git_fetch_all};
+use super::git::{
+    git_all_files_changed_since_sha, git_commit, git_current_sha, git_fetch_all, git_tag,
+};
 use super::packages::get_packages;
 use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
@@ -132,17 +134,61 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
     get_packages(cwd)
         .iter()
         .filter(|package| {
-            let pkg_json: PackageJson =
+            let mut pkg_json: PackageJson =
                 serde_json::from_value(package.pkg_json.to_owned()).unwrap();
 
             if pkg_json.dependencies.is_some() {
-                let dependencies = pkg_json.dependencies.unwrap();
-                return dependencies.contains_key(&bump_package.conventional.package_info.name);
+                let mut dependencies = pkg_json.dependencies.unwrap();
+                let has_dependency =
+                    dependencies.contains_key(&bump_package.conventional.package_info.name);
+
+                dbg!(&has_dependency);
+
+                if has_dependency {
+                    dependencies
+                        .entry(bump_package.conventional.package_info.name.to_string())
+                        .and_modify(|version| *version = bump_package.to.to_string());
+
+                    pkg_json.dependencies = Some(dependencies);
+
+                    dbg!(&pkg_json);
+
+                    /*let mut file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(&package.pkg_json_path)
+                        .unwrap();
+                    let mut writer = BufWriter::new(&file);
+                    let new_pkg_json = serde_json::to_string_pretty(&pkg_json).unwrap();
+                    writer.write_all(new_pkg_json.as_bytes()).unwrap();*/
+                }
+
+                return has_dependency;
             }
 
             if pkg_json.dev_dependencies.is_some() {
-                let dev_dependencies = pkg_json.dev_dependencies.unwrap();
-                return dev_dependencies.contains_key(&bump_package.conventional.package_info.name);
+                let mut dev_dependencies = pkg_json.dev_dependencies.unwrap();
+                let has_dependency =
+                    dev_dependencies.contains_key(&bump_package.conventional.package_info.name);
+
+                if has_dependency {
+                    dev_dependencies
+                        .entry(bump_package.conventional.package_info.name.to_string())
+                        .and_modify(|version| *version = bump_package.to.to_string());
+
+                    pkg_json.dev_dependencies = Some(dev_dependencies);
+
+                    /*let mut file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(&package.pkg_json_path)
+                        .unwrap();
+                    let mut writer = BufWriter::new(&file);
+                    let new_pkg_json = serde_json::to_string_pretty(&pkg_json).unwrap();
+                    writer.write_all(new_pkg_json.as_bytes()).unwrap();*/
+                }
+
+                return has_dependency;
             }
 
             false
@@ -194,7 +240,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
 
         let changed_files =
-            git_all_files_changed_since_sha(String::from("main"), Some(root.to_string()));
+            git_all_files_changed_since_sha(String::from("origin/main"), Some(root.to_string()));
         let ref version = semversion.to_string();
 
         package.update_version(version.to_string());
@@ -248,6 +294,10 @@ pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
 
     if bumps.len() != 0 {
         for bump in &bumps {
+            let git_user_name = changes_data.git_user_name.to_owned();
+            let git_user_email = changes_data.git_user_email.to_owned();
+            let git_message = changes_data.message.to_owned();
+
             let ref bump_pkg_json_file_path =
                 PathBuf::from(bump.conventional.package_info.package_json_path.to_string());
             let ref bump_changelog_file_path =
@@ -255,49 +305,101 @@ pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
                     .join(String::from("CHANGELOG.md"));
 
             // Write bump_pkg_json_file_path
-            let bump_pkg_json_file = std::fs::File::open(bump_pkg_json_file_path).unwrap();
-            let pkg_json_writer = std::io::BufWriter::new(bump_pkg_json_file);
+            let bump_pkg_json_file = OpenOptions::new()
+                .write(true)
+                .append(false)
+                .open(bump_pkg_json_file_path)
+                .unwrap();
+            let pkg_json_writer = BufWriter::new(bump_pkg_json_file);
             serde_json::to_writer_pretty(pkg_json_writer, &bump.conventional.package_info.pkg_json)
                 .unwrap();
 
             // Write bump_changelog_file_path
-            let mut bump_changelog_file = std::fs::File::open(bump_changelog_file_path).unwrap();
+            let mut bump_changelog_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(false)
+                .open(bump_changelog_file_path)
+                .unwrap();
+
             bump_changelog_file
                 .write_all(bump.conventional.changelog_output.as_bytes())
                 .unwrap();
 
-            todo!("Apply bump to the package");
+            define_git_config(
+                &git_user_name.unwrap_or(String::from("")),
+                &git_user_email.unwrap_or(String::from("")),
+                &root.to_string(),
+            );
+
+            let ref package_tag = format!("{}@{}", bump.conventional.package_info.name, bump.to);
+
+            git_add_all(&root.to_string());
+            git_commit(
+                git_message.unwrap_or(String::from("chore: release version")),
+                None,
+                None,
+                Some(root.to_string()),
+            )
+            .unwrap();
+            git_tag(
+                package_tag.to_string(),
+                Some(format!(
+                    "chore: release {} to version {}",
+                    bump.conventional.package_info.name, bump.to
+                )),
+                Some(root.to_string()),
+            )
+            .unwrap();
         }
     }
 
     bumps
 }
 
-fn define_git_config(username: &String, email: &String, cwd: String) {
-    let mut git_config = Command::new("git");
+fn git_add_all(cwd: &String) {
+    let mut git_add = Command::new("git");
 
-    git_config
+    git_add.current_dir(cwd.to_string()).arg("add").arg(".");
+
+    git_add.stdout(Stdio::piped());
+    git_add.stderr(Stdio::piped());
+
+    let output = git_add.execute_output().unwrap();
+
+    assert!(output.status.success(), "Failed to add all files to git")
+}
+
+fn define_git_config(username: &String, email: &String, cwd: &String) {
+    let mut git_config_user = Command::new("git");
+
+    git_config_user
         .current_dir(cwd.to_string())
         .arg("config")
         .arg("user.name")
         .arg(username);
 
-    git_config.stdout(Stdio::piped());
-    git_config.stderr(Stdio::piped());
+    git_config_user.stdout(Stdio::piped());
+    git_config_user.stderr(Stdio::piped());
 
-    let output = git_config.execute_output().unwrap();
+    let output_user = git_config_user.execute_output().unwrap();
 
-    let mut git_config = Command::new("git");
-    git_config
+    let mut git_config_email = Command::new("git");
+    git_config_email
         .current_dir(cwd.to_string())
         .arg("config")
         .arg("user.email")
         .arg(email);
 
-    git_config.stdout(Stdio::piped());
-    git_config.stderr(Stdio::piped());
+    git_config_email.stdout(Stdio::piped());
+    git_config_email.stderr(Stdio::piped());
 
-    let output = git_config.execute_output().unwrap();
+    let output_email = git_config_email.execute_output().unwrap();
+
+    assert!(
+        output_user.status.success() == output_email.status.success(),
+        "Cannot config git user.name or user.email"
+    )
 }
 
 #[cfg(test)]
@@ -366,10 +468,11 @@ mod tests {
 
         let ref root = project_root.unwrap().to_string();
 
-        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
-            .iter()
-            .map(|package| package.name.to_string())
-            .collect::<Vec<String>>();
+        let packages =
+            get_changed_packages(Some(String::from("origin/main")), Some(root.to_string()))
+                .iter()
+                .map(|package| package.name.to_string())
+                .collect::<Vec<String>>();
 
         let bumps = get_bumps(BumpOptions {
             packages,
@@ -381,6 +484,57 @@ mod tests {
 
         assert_eq!(bumps.len(), 2);
         remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages =
+            get_changed_packages(Some(String::from("origin/main")), Some(root.to_string()))
+                .iter()
+                .map(|package| package.name.to_string())
+                .collect::<Vec<String>>();
+
+        let main_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("main")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git checkout main problem");
+
+        main_branch.wait_with_output()?;
+
+        let merge_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("merge")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git merge problem");
+
+        merge_branch.wait_with_output()?;
+
+        let bump_options = BumpOptions {
+            packages,
+            release_as: Bump::Minor,
+            fetch_all: None,
+            fetch_tags: None,
+            cwd: Some(root.to_string()),
+        };
+
+        let bumps = apply_bumps(bump_options);
+        //dbg!(&bumps);
+        assert_eq!(bumps.len(), bumps.len());
+        dbg!(&monorepo_dir);
+        //remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
 }

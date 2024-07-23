@@ -5,14 +5,12 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-use std::path::Path;
-#[cfg(test)]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(test)]
-use std::fs::{create_dir, File};
+use std::fs::{create_dir, File, OpenOptions};
 #[cfg(test)]
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 #[cfg(test)]
 use rand::distributions::Alphanumeric;
@@ -26,9 +24,7 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(test)]
 use super::manager::PackageManager;
 #[cfg(test)]
-use std::process::Command;
-#[cfg(test)]
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Package scope metadata extracted from a package name.
@@ -95,69 +91,83 @@ pub(crate) fn create_test_monorepo(
     #[cfg(not(windows))]
     std::fs::set_permissions(&monorepo_temp_dir, std::fs::Permissions::from_mode(0o777))?;
 
-    let mut monorepo_package_json_file = File::create(&monorepo_package_json)?;
-    monorepo_package_json_file.write_all(
-        r#"
-        {
-            "name": "@scope/root",
-            "version": "0.0.0",
-            "workspaces": [
-                "packages/package-a",
-                "packages/package-b"
-            ]
-        }"#
-        .as_bytes(),
-    )?;
+    let monorepo_root_json = r#"
+    {
+        "name": "@scope/root",
+        "version": "0.0.0",
+        "workspaces": [
+            "packages/package-a",
+            "packages/package-b"
+        ]
+    }"#;
+    let package_root_json = serde_json::from_str::<serde_json::Value>(monorepo_root_json).unwrap();
+    let monorepo_package_root_json_file = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .create(true)
+        .open(&monorepo_package_json.as_path())
+        .unwrap();
+    let monorepo_root_json_writer = BufWriter::new(monorepo_package_root_json_file);
+    serde_json::to_writer_pretty(monorepo_root_json_writer, &package_root_json).unwrap();
 
-    let mut monorepo_package_a_json = File::create(&monorepo_package_a_dir.join("package.json"))?;
-    let mut monorepo_package_b_json = File::create(&monorepo_package_b_dir.join("package.json"))?;
+    let package_a_json = r#"
+    {
+        "name": "@scope/package-a",
+        "version": "1.0.0",
+        "description": "My new package A",
+        "main": "index.mjs",
+        "repository": {
+          "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
+          "type": "git"
+        },
+        "scripts": {
+          "test": "echo \"Error: no test specified\" && exit 1",
+          "dev": "node index.mjs"
+        },
+        "dependencies": {
+          "@scope/package-b": "1.0.0"
+        },
+        "keywords": [],
+        "author": "Author",
+        "license": "ISC"
+    }"#;
+    let package_a_json = serde_json::from_str::<serde_json::Value>(package_a_json).unwrap();
+    let monorepo_package_a_json_file = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .create(true)
+        .open(&monorepo_package_a_dir.join("package.json").as_path())
+        .unwrap();
+    let monorepo_package_a_json_writer = BufWriter::new(monorepo_package_a_json_file);
+    serde_json::to_writer_pretty(monorepo_package_a_json_writer, &package_a_json).unwrap();
 
-    monorepo_package_a_json.write_all(
-        r#"
-        {
-            "name": "@scope/package-a",
-              "version": "1.0.0",
-              "description": "My new package A",
-              "main": "index.mjs",
-              "repository": {
-                "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
-                "type": "git"
-              },
-              "scripts": {
-                "test": "echo \"Error: no test specified\" && exit 1",
-                "dev": "node index.mjs"
-              },
-              "dependencies": {
-                "@scope/package-b": "1.0.0"
-              },
-              "keywords": [],
-              "author": "",
-              "license": "ISC"
-        }"#
-        .as_bytes(),
-    )?;
-
-    monorepo_package_b_json.write_all(
-        r#"
-        {
-            "name": "@scope/package-b",
-            "version": "1.0.0",
-            "description": "My new package B",
-            "main": "index.mjs",
-            "repository": {
-              "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
-              "type": "git"
-            },
-            "scripts": {
-              "test": "echo \"Error: no test specified\" && exit 1",
-              "dev": "node index.mjs"
-            },
-            "keywords": [],
-            "author": "",
-            "license": "ISC"
-        }"#
-        .as_bytes(),
-    )?;
+    let package_b_json = r#"
+    {
+        "name": "@scope/package-b",
+        "version": "1.0.0",
+        "description": "My new package B",
+        "main": "index.mjs",
+        "repository": {
+          "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
+          "type": "git"
+        },
+        "scripts": {
+          "test": "echo \"Error: no test specified\" && exit 1",
+          "dev": "node index.mjs"
+        },
+        "keywords": [],
+        "author": "Author",
+        "license": "ISC"
+    }"#;
+    let package_b_json = serde_json::from_str::<serde_json::Value>(package_b_json).unwrap();
+    let monorepo_package_b_json_file = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .create(true)
+        .open(&monorepo_package_b_dir.join("package.json").as_path())
+        .unwrap();
+    let monorepo_package_b_json_writer = BufWriter::new(monorepo_package_b_json_file);
+    serde_json::to_writer_pretty(monorepo_package_b_json_writer, &package_b_json).unwrap();
 
     match package_manager {
         PackageManager::Yarn => {

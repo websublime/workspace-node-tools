@@ -1,6 +1,6 @@
 [package]
 name = "workspace-node-tools"
-version = "1.0.9"
+version = "1.0.10"
 edition = "2021"
 description = "Node workspace version tools"
 repository = "https://github.com/websublime/workspace-node-tools"

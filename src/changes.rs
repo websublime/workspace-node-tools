@@ -9,6 +9,8 @@
 //! ```json
 //! {
 //!   "message": "chore(release): release new version",
+//!   "gitUserName": "Git Bot",
+//!   "gitUserEmail": "git.bot@domain.com",
 //!   "changes": {
 //!       "BRANCH-NAME": [{
 //!           "package": "xxx",
@@ -40,6 +42,8 @@ type ChangesData = BTreeMap<String, Vec<Change>>;
 /// Options to initialize the changes file
 pub struct ChangesOptions {
     pub message: Option<String>,
+    pub git_user_name: Option<String>,
+    pub git_user_email: Option<String>,
 }
 
 #[cfg(feature = "napi")]
@@ -47,6 +51,8 @@ pub struct ChangesOptions {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ChangesOptions {
     pub message: Option<String>,
+    pub git_user_name: Option<String>,
+    pub git_user_email: Option<String>,
 }
 
 #[cfg(not(feature = "napi"))]
@@ -54,6 +60,8 @@ pub struct ChangesOptions {
 /// Data structure to store changes file
 pub struct ChangesFileData {
     pub message: Option<String>,
+    pub git_user_name: Option<String>,
+    pub git_user_email: Option<String>,
     pub changes: ChangesData,
 }
 
@@ -62,6 +70,8 @@ pub struct ChangesFileData {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ChangesFileData {
     pub message: Option<String>,
+    pub git_user_name: Option<String>,
+    pub git_user_email: Option<String>,
     pub changes: ChangesData,
 }
 
@@ -126,15 +136,33 @@ pub fn init_changes(
             None => String::from("chore(release): release new version"),
         };
 
+        let username = match &change_options {
+            Some(options) => match &options.git_user_name {
+                Some(name) => name.to_string(),
+                None => String::from("Git Bot"),
+            },
+            None => String::from("Git Bot"),
+        };
+
+        let email = match &change_options {
+            Some(options) => match &options.git_user_email {
+                Some(email) => email.to_string(),
+                None => String::from("git.bot@domain.com"),
+            },
+            None => String::from("git.bot@domain.com"),
+        };
+
         let changes = ChangesFileData {
             message: Some(message),
+            git_user_name: Some(username),
+            git_user_email: Some(email),
             changes: ChangesData::new(),
         };
 
         let changes_file = File::create(changes_path).unwrap();
         let changes_writer = BufWriter::new(changes_file);
 
-        serde_json::to_writer(changes_writer, &changes).unwrap();
+        serde_json::to_writer_pretty(changes_writer, &changes).unwrap();
 
         return changes;
     }

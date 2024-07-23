@@ -8,12 +8,17 @@
 use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::path::PathBuf;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
+use super::changes::init_changes;
 use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
-use super::git::{git_all_files_changed_since_sha, git_current_sha, git_fetch_all};
+use super::git::{
+    git_add, git_add_all, git_all_files_changed_since_sha, git_commit, git_config, git_current_sha,
+    git_fetch_all, git_push, git_tag,
+};
 use super::packages::get_packages;
 use super::packages::PackageInfo;
 use super::paths::get_project_root_path;
@@ -43,9 +48,12 @@ pub enum Bump {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
     pub packages: Vec<String>,
+    pub since: Option<String>,
     pub release_as: Bump,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
+    pub sync_deps: Option<bool>,
+    pub push: Option<bool>,
     pub cwd: Option<String>,
 }
 
@@ -54,9 +62,12 @@ pub struct BumpOptions {
 /// Struct representing the options for the bump operation.
 pub struct BumpOptions {
     pub packages: Vec<String>,
+    pub since: Option<String>,
     pub release_as: Bump,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
+    pub sync_deps: Option<bool>,
+    pub push: Option<bool>,
     pub cwd: Option<String>,
 }
 
@@ -125,20 +136,93 @@ impl Bump {
 
 /// Bumps the version of dev-dependencies and dependencies.
 pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String> {
-    get_packages(cwd)
+    let ref root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    get_packages(Some(root.to_string()))
         .iter()
         .filter(|package| {
-            let pkg_json: PackageJson =
+            let mut pkg_json: PackageJson =
                 serde_json::from_value(package.pkg_json.to_owned()).unwrap();
 
             if pkg_json.dependencies.is_some() {
-                let dependencies = pkg_json.dependencies.unwrap();
-                return dependencies.contains_key(&bump_package.conventional.package_info.name);
+                let mut dependencies = pkg_json.dependencies.unwrap();
+                let has_dependency =
+                    dependencies.contains_key(&bump_package.conventional.package_info.name);
+
+                if has_dependency {
+                    dependencies
+                        .entry(bump_package.conventional.package_info.name.to_string())
+                        .and_modify(|version| *version = bump_package.to.to_string());
+
+                    pkg_json.dependencies = Some(dependencies);
+
+                    let file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(&package.package_json_path)
+                        .unwrap();
+                    let writer = BufWriter::new(&file);
+                    let new_pkg_json = serde_json::to_value(&pkg_json).unwrap();
+                    serde_json::to_writer_pretty(writer, &new_pkg_json).unwrap();
+
+                    git_add(&root.to_string(), &package.package_json_path.to_owned())
+                        .expect("Failed to add package.json");
+                    git_commit(
+                        format!(
+                            "chore: update dependency {} in {}",
+                            bump_package.conventional.package_info.name.to_string(),
+                            package.name.to_string()
+                        ),
+                        None,
+                        None,
+                        Some(root.to_string()),
+                    )
+                    .expect("Failed to commit package.json");
+                }
+
+                return has_dependency;
             }
 
             if pkg_json.dev_dependencies.is_some() {
-                let dev_dependencies = pkg_json.dev_dependencies.unwrap();
-                return dev_dependencies.contains_key(&bump_package.conventional.package_info.name);
+                let mut dev_dependencies = pkg_json.dev_dependencies.unwrap();
+                let has_dependency =
+                    dev_dependencies.contains_key(&bump_package.conventional.package_info.name);
+
+                if has_dependency {
+                    dev_dependencies
+                        .entry(bump_package.conventional.package_info.name.to_string())
+                        .and_modify(|version| *version = bump_package.to.to_string());
+
+                    pkg_json.dev_dependencies = Some(dev_dependencies);
+
+                    let file = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(&package.package_json_path)
+                        .unwrap();
+                    let writer = BufWriter::new(&file);
+                    let new_pkg_json = serde_json::to_value(&pkg_json).unwrap();
+                    serde_json::to_writer_pretty(writer, &new_pkg_json).unwrap();
+
+                    git_add(&root.to_string(), &package.package_json_path.to_owned())
+                        .expect("Failed to add package.json");
+                    git_commit(
+                        format!(
+                            "chore: update devDependency {} in {}",
+                            bump_package.conventional.package_info.name.to_string(),
+                            package.name.to_string()
+                        ),
+                        None,
+                        None,
+                        Some(root.to_string()),
+                    )
+                    .expect("Failed to commit package.json");
+                }
+
+                return has_dependency;
             }
 
             false
@@ -147,11 +231,17 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
         .collect::<Vec<String>>()
 }
 
-/// Get bumps version of the package.
+/// Get bumps version of the package. If sync_deps is true, it will also sync the dependencies and dev-dependencies.
+/// It will also commit the changes to git.
 pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),
+    };
+
+    let ref since = match options.since {
+        Some(ref since) => since.to_string(),
+        None => String::from("main"),
     };
 
     let release_as = options.release_as.to_owned();
@@ -190,7 +280,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
 
         let changed_files =
-            git_all_files_changed_since_sha(String::from("main"), Some(root.to_string()));
+            git_all_files_changed_since_sha(since.to_string(), Some(root.to_string()));
         let ref version = semversion.to_string();
 
         package.update_version(version.to_string());
@@ -214,30 +304,105 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
         bumps.push(bump.to_owned());
 
-        let sync_packages = sync_bumps(&bump, Some(root.to_string()));
+        if options.sync_deps.unwrap_or(false) {
+            let sync_packages = sync_bumps(&bump, Some(root.to_string()));
 
-        if sync_packages.len() > 0 {
-            let sync_bumps = get_bumps(BumpOptions {
-                packages: sync_packages,
-                release_as: Bump::Patch,
-                fetch_all: options.fetch_all,
-                fetch_tags: options.fetch_tags,
-                cwd: Some(root.to_string()),
-            });
+            if sync_packages.len() > 0 {
+                let sync_bumps = get_bumps(BumpOptions {
+                    packages: sync_packages,
+                    since: Some(since.to_string()),
+                    release_as: Bump::Patch,
+                    fetch_all: options.fetch_all,
+                    fetch_tags: options.fetch_tags,
+                    sync_deps: Some(true),
+                    push: Some(false),
+                    cwd: Some(root.to_string()),
+                });
 
-            bumps.extend(sync_bumps);
+                bumps.extend(sync_bumps);
+            }
         }
     }
 
     bumps
 }
 
+/// Apply version bumps, commit and push changes. Returns a list of packages that have been updated.
+/// Also generate changelog file and update dependencies and devDependencies in package.json.
 pub fn apply_bumps(options: BumpOptions) -> Vec<BumpPackage> {
-    let bumps = get_bumps(options);
+    let ref root = match options.cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let ref changes_data = init_changes(Some(root.to_string()), &None);
+    let git_user_name = changes_data.git_user_name.to_owned();
+    let git_user_email = changes_data.git_user_email.to_owned();
+
+    git_config(
+        &git_user_name.unwrap_or(String::from("")),
+        &git_user_email.unwrap_or(String::from("")),
+        &root.to_string(),
+    )
+    .expect("Failed to set git user name and email");
+
+    let bumps = get_bumps(options.to_owned());
 
     if bumps.len() != 0 {
-        for _bump in &bumps {
-            todo!("Apply bump to the package");
+        for bump in &bumps {
+            let git_message = changes_data.message.to_owned();
+
+            let ref bump_pkg_json_file_path =
+                PathBuf::from(bump.conventional.package_info.package_json_path.to_string());
+            let ref bump_changelog_file_path =
+                PathBuf::from(bump.conventional.package_info.package_path.to_string())
+                    .join(String::from("CHANGELOG.md"));
+
+            // Write bump_pkg_json_file_path
+            let bump_pkg_json_file = OpenOptions::new()
+                .write(true)
+                .append(false)
+                .open(bump_pkg_json_file_path)
+                .unwrap();
+            let pkg_json_writer = BufWriter::new(bump_pkg_json_file);
+            serde_json::to_writer_pretty(pkg_json_writer, &bump.conventional.package_info.pkg_json)
+                .unwrap();
+
+            // Write bump_changelog_file_path
+            let mut bump_changelog_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(false)
+                .open(bump_changelog_file_path)
+                .unwrap();
+
+            bump_changelog_file
+                .write_all(bump.conventional.changelog_output.as_bytes())
+                .unwrap();
+
+            let ref package_tag = format!("{}@{}", bump.conventional.package_info.name, bump.to);
+
+            git_add_all(&root.to_string()).expect("Failed to add all files to git");
+            git_commit(
+                git_message.unwrap_or(String::from("chore: release version")),
+                None,
+                None,
+                Some(root.to_string()),
+            )
+            .unwrap();
+            git_tag(
+                package_tag.to_string(),
+                Some(format!(
+                    "chore: release {} to version {}",
+                    bump.conventional.package_info.name, bump.to
+                )),
+                Some(root.to_string()),
+            )
+            .unwrap();
+
+            if options.push.unwrap_or(false) {
+                git_push(Some(root.to_string()), Some(true)).unwrap();
+            }
         }
     }
 
@@ -317,11 +482,66 @@ mod tests {
 
         let bumps = get_bumps(BumpOptions {
             packages,
+            since: Some(String::from("main")),
             release_as: Bump::Minor,
             fetch_all: None,
             fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
             cwd: Some(root.to_string()),
         });
+
+        assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        let main_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("main")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git checkout main problem");
+
+        main_branch.wait_with_output()?;
+
+        let merge_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("merge")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git merge problem");
+
+        merge_branch.wait_with_output()?;
+
+        let bump_options = BumpOptions {
+            packages,
+            since: Some(String::from("main")),
+            release_as: Bump::Minor,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        };
+
+        let bumps = apply_bumps(bump_options);
 
         assert_eq!(bumps.len(), 2);
         remove_dir_all(&monorepo_dir)?;

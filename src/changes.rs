@@ -304,7 +304,7 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
 }
 
 /// Check if a change exists in the changes file in the root of the project.
-pub fn change_exist(branch: String, cwd: Option<String>) -> bool {
+pub fn change_exist(branch: String, packages_name: Vec<String>, cwd: Option<String>) -> bool {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),
@@ -319,7 +319,15 @@ pub fn change_exist(branch: String, cwd: Option<String>) -> bool {
 
         let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
 
-        return changes.changes.contains_key(&branch);
+        if changes.changes.contains_key(&branch) {
+            let branch_changes = changes.changes.get(&branch).unwrap();
+
+            return branch_changes.iter().any(|change| {
+                packages_name
+                    .iter()
+                    .any(|package_name| change.package == *package_name)
+            });
+        }
     }
 
     false
@@ -484,7 +492,11 @@ mod tests {
         let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
         add_change(&change, Some(root.to_string()));
 
-        let result = change_exist(String::from("main"), Some(root.to_string()));
+        let result = change_exist(
+            String::from("main"),
+            vec!["test-package".to_string()],
+            Some(root.to_string()),
+        );
 
         assert_eq!(result, true);
         assert_eq!(changes_path.is_file(), true);

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.12] - 2024-07-24
+
+### 🐛 Bug Fixes
+
+- Change exist, should also check package is defined not only branch name
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Merge pull request #23 from websublime/fix/change-exist
+
 ## [1.0.11] - 2024-07-24
 
 ### 🚀 Features

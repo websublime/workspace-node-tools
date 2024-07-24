@@ -277,6 +277,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                         changed_files: vec![],
                     }
                 })
+                .filter(|pkg| !pkg.root)
                 .collect::<Vec<PackageInfo>>()
         }
         Some(PackageManager::Yarn) | Some(PackageManager::Npm) => {
@@ -503,7 +504,7 @@ mod tests {
 
         let packages = get_packages(project_root);
 
-        assert_eq!(packages.len(), 3);
+        assert_eq!(packages.len(), 2);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

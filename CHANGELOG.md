@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.11] - 2024-07-24
+
+### 🚀 Features
+
+- Changes pretty json and remove root package for pnpm
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Merge pull request #22 from websublime/feature/pretty-json-pnpm
+
 ## [1.0.10] - 2024-07-23
 
 ### 🚀 Features

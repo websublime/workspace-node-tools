@@ -5,9 +5,9 @@
 //! # Bumps
 //!
 //! This module is responsible for managing the bumps in the monorepo.
-use package_json_schema::PackageJson;
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -144,20 +144,21 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
     get_packages(Some(root.to_string()))
         .iter()
         .filter(|package| {
-            let mut pkg_json: PackageJson =
-                serde_json::from_value(package.pkg_json.to_owned()).unwrap();
+            let mut package_json_map = serde_json::Map::new();
+            package_json_map.clone_from(package.pkg_json.as_object().unwrap());
 
-            if pkg_json.dependencies.is_some() {
-                let mut dependencies = pkg_json.dependencies.unwrap();
+            if package_json_map.contains_key("dependencies") {
+                let dependencies_value = package_json_map.get_mut("dependencies").unwrap();
+                let dependencies_value = dependencies_value.as_object_mut().unwrap();
                 let has_dependency =
-                    dependencies.contains_key(&bump_package.conventional.package_info.name);
+                    dependencies_value.contains_key(&bump_package.conventional.package_info.name);
 
                 if has_dependency {
-                    dependencies
+                    dependencies_value
                         .entry(bump_package.conventional.package_info.name.to_string())
-                        .and_modify(|version| *version = bump_package.to.to_string());
+                        .and_modify(|version| *version = json!(bump_package.to.to_string()));
 
-                    pkg_json.dependencies = Some(dependencies);
+                    package_json_map["dependencies"] = json!(dependencies_value);
 
                     let file = OpenOptions::new()
                         .write(true)
@@ -165,8 +166,7 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
                         .open(&package.package_json_path)
                         .unwrap();
                     let writer = BufWriter::new(&file);
-                    let new_pkg_json = serde_json::to_value(&pkg_json).unwrap();
-                    serde_json::to_writer_pretty(writer, &new_pkg_json).unwrap();
+                    serde_json::to_writer_pretty(writer, &package_json_map).unwrap();
 
                     git_add(&root.to_string(), &package.package_json_path.to_owned())
                         .expect("Failed to add package.json");
@@ -186,17 +186,18 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
                 return has_dependency;
             }
 
-            if pkg_json.dev_dependencies.is_some() {
-                let mut dev_dependencies = pkg_json.dev_dependencies.unwrap();
-                let has_dependency =
-                    dev_dependencies.contains_key(&bump_package.conventional.package_info.name);
+            if package_json_map.contains_key("devDependencies") {
+                let dev_dependencies_value = package_json_map.get_mut("devDependencies").unwrap();
+                let dev_dependencies_value = dev_dependencies_value.as_object_mut().unwrap();
+                let has_dependency = dev_dependencies_value
+                    .contains_key(&bump_package.conventional.package_info.name);
 
                 if has_dependency {
-                    dev_dependencies
+                    dev_dependencies_value
                         .entry(bump_package.conventional.package_info.name.to_string())
-                        .and_modify(|version| *version = bump_package.to.to_string());
+                        .and_modify(|version| *version = json!(bump_package.to.to_string()));
 
-                    pkg_json.dev_dependencies = Some(dev_dependencies);
+                    package_json_map["devDependencies"] = json!(dev_dependencies_value);
 
                     let file = OpenOptions::new()
                         .write(true)
@@ -204,8 +205,7 @@ pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String
                         .open(&package.package_json_path)
                         .unwrap();
                     let writer = BufWriter::new(&file);
-                    let new_pkg_json = serde_json::to_value(&pkg_json).unwrap();
-                    serde_json::to_writer_pretty(writer, &new_pkg_json).unwrap();
+                    serde_json::to_writer_pretty(writer, &package_json_map).unwrap();
 
                     git_add(&root.to_string(), &package.package_json_path.to_owned())
                         .expect("Failed to add package.json");

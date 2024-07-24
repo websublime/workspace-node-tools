@@ -116,6 +116,20 @@ pub(crate) fn create_test_monorepo(
         "version": "1.0.0",
         "description": "My new package A",
         "main": "index.mjs",
+        "module": "./dist/index.mjs",
+        "exports": {
+          ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.mjs"
+          }
+        },
+        "typesVersions": {
+          "*": {
+            "index.d.ts": [
+              "./dist/index.d.ts"
+            ]
+          }
+        },
         "repository": {
           "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
           "type": "git"
@@ -147,6 +161,20 @@ pub(crate) fn create_test_monorepo(
         "version": "1.0.0",
         "description": "My new package B",
         "main": "index.mjs",
+        "module": "./dist/index.mjs",
+        "exports": {
+          ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.mjs"
+          }
+        },
+        "typesVersions": {
+          "*": {
+            "index.d.ts": [
+              "./dist/index.d.ts"
+            ]
+          }
+        },
         "repository": {
           "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
           "type": "git"
@@ -284,4 +312,77 @@ pub(crate) fn create_test_monorepo(
     let root = canonic_path.as_path().display().to_string();
 
     Ok(PathBuf::from(root))
+}
+
+#[cfg(test)]
+mod tests {
+    //use super::*;
+
+    #[test]
+    fn test_parse_package_json() {
+        let package_json = r#"
+          {
+            "name": "@websublime/workspace-tools",
+            "version": "1.0.0",
+            "description": "My package json",
+            "main": "./dist/index.js",
+            "module": "./dist/index.js",
+            "exports": {
+              ".": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+              }
+            },
+            "typesVersions": {
+              "*": {
+                "index.d.ts": [
+                  "./dist/index.d.ts"
+                ]
+              }
+            },
+            "scripts": {
+              "type-check": "vue-tsc --noEmit",
+              "test": "vitest run --coverage",
+              "build": "vite build --config vite.config.mts --mode=production --emptyOutDir=true",
+              "dev": "vite --config vite.config.mts --debug --force"
+            },
+            "keywords": [],
+            "author": "",
+            "license": "ISL",
+            "publishConfig": {
+              "scope": "@websublime"
+            },
+            "repository": {
+              "url": "git+ssh://git@github.com/websublime/workspace-tools.git",
+              "type": "git"
+            },
+            "dependencies": {
+              "@websublime/workspace-tools": "^0.30.0"
+            },
+            "devDependencies": {
+              "@types/jsdom": "^21.1.6",
+              "@types/node": "^20.11.6",
+              "@workbench/core": "^7.21.0",
+              "@vitest/coverage-v8": "^2.0.4",
+              "@vue/test-utils": "2.3.2",
+              "happy-dom": "^14.12.3",
+              "typescript": "^5.3.3",
+              "@vitejs/plugin-vue": "^5.0.3",
+              "vite": "^5.3.4",
+              "vitest": "^2.0.4",
+              "vue": "3.3.4",
+              "vue-tsc": "^1.8.27"
+            },
+            "files": [
+              "dist",
+              "manifest.json",
+              "./LICENSE.md",
+              "./README.md",
+              "./CHANGELOG.md"
+            ]
+          }"#;
+        let package_json_parsed = serde_json::from_str::<serde_json::Value>(package_json).unwrap();
+
+        assert_eq!(package_json_parsed.is_object(), true);
+    }
 }

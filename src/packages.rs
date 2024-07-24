@@ -4,7 +4,6 @@
 //!
 //! The `packages` module is used to get the list of packages available in the monorepo.
 use execute::Execute;
-use package_json_schema::{PackageJson, Repository};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -128,67 +127,7 @@ fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
     PackageRepositoryInfo {
         domain: domain.to_string().replace("/", ""),
         orga: orga.to_string().replace("/", ""),
-        project: project.to_string().replace("/", ""),
-    }
-}
-
-/// Generates and format the url of the project
-fn format_repo_url(repo: &Option<Repository>) -> String {
-    let regex = Regex::new(r"(?m)^((?<prefix>git[/+]))?((?<protocol>https?|ssh|git|ftps?)://)?((?<user>[^/@]+)@)?(?<host>[^/:]+)[/:](?<port>[^/:]+)/(?<path>.+/)?(?<repo>.+?)(?<suffix>\.git[/]?)?$").unwrap();
-
-    match repo {
-        Some(Repository::Path(repo)) => {
-            let captures = regex.captures(&repo).unwrap();
-            let mut url = "https://".to_string();
-
-            if captures.name("host").is_some() {
-                url.push_str(captures.name("host").unwrap().as_str());
-            }
-
-            if captures.name("port").is_some() {
-                url.push('/');
-                url.push_str(captures.name("port").unwrap().as_str());
-            }
-
-            if captures.name("path").is_some() {
-                url.push('/');
-                url.push_str(captures.name("repo").unwrap().as_str());
-            }
-
-            if captures.name("repo").is_some() {
-                url.push('/');
-                url.push_str(captures.name("repo").unwrap().as_str());
-            }
-
-            url
-        }
-        Some(Repository::Object { url, .. }) => {
-            let url = url.as_ref().unwrap().to_string();
-            let captures = regex.captures(&url).unwrap();
-            let mut url = "https://".to_string();
-
-            if captures.name("host").is_some() {
-                url.push_str(captures.name("host").unwrap().as_str());
-            }
-
-            if captures.name("port").is_some() {
-                url.push('/');
-                url.push_str(captures.name("port").unwrap().as_str());
-            }
-
-            if captures.name("path").is_some() {
-                url.push('/');
-                url.push_str(captures.name("repo").unwrap().as_str());
-            }
-
-            if captures.name("repo").is_some() {
-                url.push('/');
-                url.push_str(captures.name("repo").unwrap().as_str());
-            }
-
-            url
-        }
-        None => String::from("https://github.com/my-orga/my-repo"),
+        project: project.to_string().replace("/", "").replace(".git", ""),
     }
 }
 
@@ -240,9 +179,43 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
             pnpm_info
                 .iter()
                 .map(|info| {
-                    let package_json_path = format!("{}/package.json", info.path);
-                    let package_json = std::fs::read_to_string(&package_json_path).unwrap();
-                    let pkg_json = PackageJson::try_from(package_json).unwrap();
+                    let ref package_json_path = format!("{}/package.json", info.path);
+
+                    let package_json_file =
+                        std::fs::File::open(package_json_path.to_string()).unwrap();
+                    let package_json_reader = std::io::BufReader::new(package_json_file);
+                    let pkg_json: serde_json::Value =
+                        serde_json::from_reader(package_json_reader).unwrap();
+
+                    let ref version = match pkg_json.get("version") {
+                        Some(version) => {
+                            if version.is_string() {
+                                version.as_str().unwrap().to_string()
+                            } else {
+                                String::from("0.0.0")
+                            }
+                        }
+                        None => String::from("0.0.0"),
+                    };
+
+                    let ref repo_url = match pkg_json.get("repository") {
+                        Some(repository) => {
+                            if repository.is_object() {
+                                let repo = repository.as_object().unwrap();
+
+                                match repo.get("url") {
+                                    Some(url) => url.as_str().unwrap().to_string(),
+                                    None => String::from("https://github.com/my-orga/my-repo"),
+                                }
+                            } else if repository.is_string() {
+                                repository.as_str().unwrap().to_string()
+                            } else {
+                                String::from("https://github.com/my-orga/my-repo")
+                            }
+                        }
+                        None => String::from("https://github.com/my-orga/my-repo"),
+                    };
+
                     let is_root = info.path == project_root;
 
                     let relative_path = match is_root {
@@ -255,21 +228,17 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                         }
                     };
 
-                    let repo_url = format_repo_url(&pkg_json.repository);
-                    let repository_info = get_package_repository_info(&repo_url);
-
+                    let repository_info = get_package_repository_info(repo_url);
                     let name = &info.name.to_string();
                     let package_path = &info.path.to_string();
-                    let package_json = serde_json::to_value(&pkg_json).unwrap();
-                    let version = &pkg_json.version.unwrap_or(String::from("0.0.0"));
 
                     PackageInfo {
                         name: name.to_string(),
                         private: info.private,
-                        package_json_path,
+                        package_json_path: package_json_path.to_string(),
                         package_path: package_path.to_string(),
                         package_relative_path: relative_path,
-                        pkg_json: package_json,
+                        pkg_json,
                         root: is_root,
                         version: version.to_string(),
                         url: String::from(repo_url),
@@ -332,18 +301,63 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                 if patterns.is_match(CandidatePath::from(
                     entry.path().strip_prefix(&path).unwrap(),
                 )) {
-                    let package_json = std::fs::read_to_string(&entry.path()).unwrap();
-                    let pkg_json = PackageJson::try_from(package_json).unwrap();
-                    let private =
-                        matches!(pkg_json.private, Some(package_json_schema::Private::True));
+                    let package_json_file = std::fs::File::open(&entry.path()).unwrap();
+                    let package_json_reader = std::io::BufReader::new(package_json_file);
+                    let pkg_json: serde_json::Value =
+                        serde_json::from_reader(package_json_reader).unwrap();
 
-                    let package_json = serde_json::to_value(&pkg_json).unwrap();
+                    let private = match pkg_json.get("private") {
+                        Some(private) => {
+                            if private.is_boolean() {
+                                private.as_bool().unwrap()
+                            } else {
+                                false
+                            }
+                        }
+                        None => false,
+                    };
 
-                    let repo_url = format_repo_url(&pkg_json.repository);
-                    let repository_info = get_package_repository_info(&repo_url);
+                    let ref version = match pkg_json.get("version") {
+                        Some(version) => {
+                            if version.is_string() {
+                                version.as_str().unwrap().to_string()
+                            } else {
+                                String::from("0.0.0")
+                            }
+                        }
+                        None => String::from("0.0.0"),
+                    };
 
-                    let name = &pkg_json.name.unwrap().to_string();
-                    let version = &pkg_json.version.unwrap_or(String::from("0.0.0"));
+                    let ref repo_url = match pkg_json.get("repository") {
+                        Some(repository) => {
+                            if repository.is_object() {
+                                let repo = repository.as_object().unwrap();
+
+                                match repo.get("url") {
+                                    Some(url) => url.as_str().unwrap().to_string(),
+                                    None => String::from("https://github.com/my-orga/my-repo"),
+                                }
+                            } else if repository.is_string() {
+                                repository.as_str().unwrap().to_string()
+                            } else {
+                                String::from("https://github.com/my-orga/my-repo")
+                            }
+                        }
+                        None => String::from("https://github.com/my-orga/my-repo"),
+                    };
+
+                    let name = match pkg_json.get("name") {
+                        Some(name) => {
+                            if name.is_string() {
+                                name.as_str().unwrap().to_string()
+                            } else {
+                                String::from("unknown")
+                            }
+                        }
+                        None => String::from("unknown"),
+                    };
+
+                    let repository_info = get_package_repository_info(repo_url);
 
                     let pkg_info = PackageInfo {
                         name: name.to_string(),
@@ -354,10 +368,10 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                             .strip_suffix("/package.json")
                             .unwrap()
                             .to_string(),
-                        pkg_json: package_json,
+                        pkg_json,
                         root: false,
                         version: version.to_string(),
-                        url: repo_url,
+                        url: repo_url.to_string(),
                         repository_info: Some(repository_info),
                         changed_files: vec![],
                     };

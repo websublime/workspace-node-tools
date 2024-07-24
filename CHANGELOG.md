@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.13] - 2024-07-24
+
+### 🚀 Features
+
+- Remove PackageJsonSchema and safe parse only with serde
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Bump patch version
+- Merge pull request #24 from websublime/feature/safe-parse-json
+
 ## [1.0.12] - 2024-07-24
 
 ### 🐛 Bug Fixes

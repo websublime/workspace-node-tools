@@ -212,7 +212,7 @@ pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
         let changes_file = File::create(changes_path).unwrap();
         let changes_writer = BufWriter::new(changes_file);
 
-        serde_json::to_writer(changes_writer, &changes).unwrap();
+        serde_json::to_writer_pretty(changes_writer, &changes).unwrap();
 
         return true;
     }
@@ -242,7 +242,7 @@ pub fn remove_change(branch_name: String, cwd: Option<String>) -> bool {
             let changes_file = File::create(changes_path).unwrap();
             let changes_writer = BufWriter::new(changes_file);
 
-            serde_json::to_writer(changes_writer, &changes).unwrap();
+            serde_json::to_writer_pretty(changes_writer, &changes).unwrap();
 
             return true;
         }

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.14] - 2024-08-06
+
+### 🐛 Bug Fixes
+
+- Bump snapshot for dependencies when parent is snapshot too
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Merge pull request #29 from websublime/feature/dependency-patch-fix
+
 ## [1.0.13] - 2024-07-24
 
 ### 🚀 Features

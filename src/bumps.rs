@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::changes::init_changes;
 use super::conventional::ConventionalPackage;
@@ -264,8 +264,6 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
 
     for mut package in packages {
         let package_version = &package.version.to_string();
-        let changelog_exists =
-            Path::new(&format!("{}/CHANGELOG.md", package.package_path)).exists();
 
         let semversion = match release_as {
             Bump::Major => Bump::bump_major(package_version.to_string()),
@@ -274,9 +272,9 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             Bump::Snapshot => Bump::bump_snapshot(package_version.to_string()),
         };
 
-        let title = match changelog_exists {
-            true => None,
-            false => Some("# What changed?".to_string()),
+        let dependency_semversion = match release_as {
+            Bump::Snapshot => Bump::Snapshot,
+            _ => Bump::Patch,
         };
 
         let changed_files =
@@ -292,7 +290,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             Some(root.to_string()),
             &Some(ConventionalPackageOptions {
                 version: Some(version.to_string()),
-                title,
+                title: Some("# What changed?".to_string()),
             }),
         );
 
@@ -311,7 +309,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
                 let sync_bumps = get_bumps(BumpOptions {
                     packages: sync_packages,
                     since: Some(since.to_string()),
-                    release_as: Bump::Patch,
+                    release_as: dependency_semversion,
                     fetch_all: options.fetch_all,
                     fetch_tags: options.fetch_tags,
                     sync_deps: Some(true),

@@ -11,6 +11,7 @@ use serde_json::json;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use super::changes::init_changes;
 use super::conventional::ConventionalPackage;
@@ -125,7 +126,11 @@ impl Bump {
     /// Bumps the version of the package to snapshot appending the sha to the version.
     fn bump_snapshot(version: String) -> SemVersion {
         let sha = git_current_sha(None);
-        let alpha = format!("alpha.{}", sha);
+        let duration_since_epoch = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap();
+        let timestamp_nanos = duration_since_epoch.as_nanos();
+        let alpha = format!("alpha.{}.{}", timestamp_nanos, sha);
 
         let mut sem_version = SemVersion::parse(&version).unwrap();
         sem_version.pre = Prerelease::new(alpha.as_str()).unwrap_or(Prerelease::EMPTY);
@@ -542,6 +547,59 @@ mod tests {
         let bumps = apply_bumps(bump_options);
 
         assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_snapshot_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        let main_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("main")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git checkout main problem");
+
+        main_branch.wait_with_output()?;
+
+        let merge_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("merge")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git merge problem");
+
+        merge_branch.wait_with_output()?;
+
+        let bump_options = BumpOptions {
+            packages,
+            since: Some(String::from("main")),
+            release_as: Bump::Snapshot,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        };
+
+        let bumps = apply_bumps(bump_options);
+
+        assert_eq!(bumps.len(), 2);
+        assert_ne!(&bumps.get(0).unwrap().to, &bumps.get(1).unwrap().to);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

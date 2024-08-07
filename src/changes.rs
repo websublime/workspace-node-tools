@@ -322,10 +322,10 @@ pub fn change_exist(branch: String, packages_name: Vec<String>, cwd: Option<Stri
         if changes.changes.contains_key(&branch) {
             let branch_changes = changes.changes.get(&branch).unwrap();
 
-            return branch_changes.iter().any(|change| {
+            return branch_changes.iter().all(|change| {
                 packages_name
                     .iter()
-                    .any(|package_name| change.package == *package_name)
+                    .all(|package_name| change.package == *package_name)
             });
         }
     }

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.16] - 2024-08-07
+
+### 🐛 Bug Fixes
+
+- Change_exist iter was using any, changed to all
+
+### ⚙️ Miscellaneous Tasks
+
+- Changelog maintenance
+- Merge pull request #31 from websublime/fix/change-exist-any-to-all
+
 ## [1.0.15] - 2024-08-07
 
 ### 🚀 Features

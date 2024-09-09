@@ -102,6 +102,7 @@ fn define_config(
                         owner: String::from(owner),
                         repo: String::from(repo),
                         token: None,
+                        is_custom: false,
                     },
                     ..RemoteConfig::default()
                 },

@@ -193,11 +193,18 @@ pub fn add_change(change: &Change, cwd: Option<String>) -> bool {
 
         if changes.changes.contains_key(&branch) {
             let branch_changes = changes.changes.get_mut(&branch).unwrap();
-            branch_changes.push(Change {
-                package: change.package.to_string(),
-                release_as: change.release_as,
-                deploy: change.deploy.to_vec(),
-            });
+
+            let pkg_already_added = branch_changes
+                .iter()
+                .any(|branch_change| branch_change.package.as_str() == change.package.as_str());
+
+            if !pkg_already_added {
+                branch_changes.push(Change {
+                    package: change.package.to_string(),
+                    release_as: change.release_as,
+                    deploy: change.deploy.to_vec(),
+                });
+            }
         } else {
             changes.changes.insert(
                 branch,
@@ -325,7 +332,7 @@ pub fn change_exist(branch: String, packages_name: Vec<String>, cwd: Option<Stri
             return branch_changes.iter().all(|change| {
                 packages_name
                     .iter()
-                    .all(|package_name| change.package == *package_name)
+                    .any(|package_name| change.package.as_str() == package_name.as_str())
             });
         }
     }
@@ -390,6 +397,34 @@ mod tests {
         let result = add_change(&change, Some(root.to_string()));
 
         assert_eq!(result, true);
+        assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_add_change() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        let change = Change {
+            package: String::from("test-package"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+        add_change(&change, Some(root.to_string()));
+        add_change(&change, Some(root.to_string()));
+
+        let changes = get_changes(Some(root.to_string()));
+        let length = changes.changes["main"].len();
+
+        assert_eq!(length, 1);
         assert_eq!(changes_path.is_file(), true);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -502,6 +537,45 @@ mod tests {
         assert_eq!(changes_path.is_file(), true);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
+    }
+
+    #[test]
+    fn test_multiple_change_exist() {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm).unwrap();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf())).unwrap();
+
+        let ref root = project_root.to_string();
+
+        let change_package_a = Change {
+            package: String::from("@scope/package-a"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        let change_package_b = Change {
+            package: String::from("@scope/package-b"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+        add_change(&change_package_a, Some(root.to_string()));
+        add_change(&change_package_b, Some(root.to_string()));
+
+        let result = change_exist(
+            String::from("main"),
+            vec![
+                "@scope/package-a".to_string(),
+                "@scope/package-b".to_string(),
+            ],
+            Some(root.to_string()),
+        );
+
+        assert_eq!(result, true);
+        assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir).unwrap();
     }
 
     #[test]

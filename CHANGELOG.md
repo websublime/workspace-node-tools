@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.18] - 2024-09-11
+
+### 🐛 Bug Fixes
+
+- Changes diff exists for empty and new changed package
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Merge pull request #44 from websublime/fix/change-exist-diff
+
 ## [1.0.17] - 2024-09-09
 
 ### 🐛 Bug Fixes

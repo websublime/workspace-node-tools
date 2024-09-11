@@ -329,11 +329,26 @@ pub fn change_exist(branch: String, packages_name: Vec<String>, cwd: Option<Stri
         if changes.changes.contains_key(&branch) {
             let branch_changes = changes.changes.get(&branch).unwrap();
 
-            return branch_changes.iter().all(|change| {
-                packages_name
-                    .iter()
-                    .any(|package_name| change.package.as_str() == package_name.as_str())
-            });
+            let existing_packages_changes = branch_changes
+                .iter()
+                .map(|change| change.package.to_string())
+                .collect::<Vec<String>>();
+
+            let package_names_diff = packages_name
+                .iter()
+                .filter_map(|p| {
+                    if existing_packages_changes.contains(&p) {
+                        None
+                    } else {
+                        Some(p.to_string())
+                    }
+                })
+                .collect::<Vec<String>>();
+
+            match package_names_diff.len() {
+                0 => return true,
+                _ => return false,
+            };
         }
     }
 
@@ -576,6 +591,59 @@ mod tests {
         assert_eq!(result, true);
         assert_eq!(changes_path.is_file(), true);
         remove_dir_all(&monorepo_dir).unwrap();
+    }
+
+    #[test]
+    fn test_change_exist_with_new_package() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        let change = Change {
+            package: String::from("test-package"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+        add_change(&change, Some(root.to_string()));
+
+        let result = change_exist(
+            String::from("main"),
+            vec!["test-package".to_string(), "@scope/package-a".to_string()],
+            Some(root.to_string()),
+        );
+
+        assert_eq!(result, false);
+        assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_change_exist_with_empty_packages() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        let ref root = project_root.unwrap().to_string();
+
+        init_changes(Some(root.to_string()), &None);
+
+        let ref changes_path = monorepo_dir.join(String::from(".changes.json"));
+
+        let result = change_exist(
+            String::from("main"),
+            vec!["test-package".to_string(), "@scope/package-a".to_string()],
+            Some(root.to_string()),
+        );
+
+        assert_eq!(result, false);
+        assert_eq!(changes_path.is_file(), true);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
     }
 
     #[test]

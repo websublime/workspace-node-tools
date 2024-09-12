@@ -7,18 +7,18 @@
 //! This module is responsible for managing the bumps in the monorepo.
 use semver::{BuildMetadata, Prerelease, Version as SemVersion};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-use super::changes::init_changes;
+use super::changes::{init_changes, Change, get_package_change};
 use super::conventional::ConventionalPackage;
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
 use super::git::{
     git_add, git_add_all, git_all_files_changed_since_sha, git_commit, git_config, git_current_sha,
-    git_fetch_all, git_push, git_tag,
+    git_fetch_all, git_push, git_tag, git_current_branch
 };
 use super::packages::get_packages;
 use super::packages::PackageInfo;
@@ -48,9 +48,9 @@ pub enum Bump {
 #[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BumpOptions {
-    pub packages: Vec<String>,
+    pub changes: Vec<Change>,
     pub since: Option<String>,
-    pub release_as: Bump,
+    pub release_as: Option<Bump>,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
     pub sync_deps: Option<bool>,
@@ -62,9 +62,9 @@ pub struct BumpOptions {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 /// Struct representing the options for the bump operation.
 pub struct BumpOptions {
-    pub packages: Vec<String>,
+    pub changes: Vec<Change>,
     pub since: Option<String>,
-    pub release_as: Bump,
+    pub release_as: Option<Bump>,
     pub fetch_all: Option<bool>,
     pub fetch_tags: Option<bool>,
     pub sync_deps: Option<bool>,
@@ -78,8 +78,8 @@ pub struct BumpOptions {
 pub struct BumpPackage {
     pub from: String,
     pub to: String,
-    pub release_as: Bump,
-    pub conventional: ConventionalPackage,
+    pub package_info: PackageInfo,
+    pub conventional_commits: Value,
 }
 
 #[cfg(feature = "napi")]
@@ -88,8 +88,8 @@ pub struct BumpPackage {
 pub struct BumpPackage {
     pub from: String,
     pub to: String,
-    pub release_as: Bump,
-    pub conventional: ConventionalPackage,
+    pub package_info: PackageInfo,
+    pub conventional_commits: Value,
 }
 
 impl Bump {
@@ -139,6 +139,355 @@ impl Bump {
     }
 }
 
+pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
+    let ref root = match options.cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let ref since = match options.since {
+        Some(ref since) => since.to_string(),
+        None => String::from("main"),
+    };
+
+    let ref current_branch = git_current_branch(Some(root.to_string())).unwrap_or(String::from("main"));
+
+    let mut bumps: Vec<BumpPackage> = vec![];
+
+    if options.fetch_tags.is_some() {
+        git_fetch_all(Some(root.to_string()), options.fetch_tags)
+            .expect("No possible to fetch tags");
+    }
+
+    let packages = get_packages(Some(root.to_string()))
+        .iter()
+        .filter(|package| options.changes.iter().any(|change| change.package.eq(&package.name)))
+        .map(|package| package.to_owned())
+        .collect::<Vec<PackageInfo>>();
+
+    if packages.len() == 0 {
+        return bumps;
+    }
+
+    for mut package in packages {
+        let package_version = &package.version.to_string();
+        let package_name = &package.name.to_string();
+        let package_change = get_package_change(package_name.to_string(), current_branch.to_string(), Some(root.to_string()));
+
+        let release_as = options.release_as.unwrap_or_else(|| match package_change {
+            Some(change) => change.release_as,
+            None => Bump::Patch,
+        });
+
+        let semversion = match release_as {
+            Bump::Major => Bump::bump_major(package_version.to_string()),
+            Bump::Minor => Bump::bump_minor(package_version.to_string()),
+            Bump::Patch => Bump::bump_patch(package_version.to_string()),
+            Bump::Snapshot => Bump::bump_snapshot(package_version.to_string()),
+        };
+
+        let _dependency_semversion = match release_as {
+            Bump::Snapshot => Bump::Snapshot,
+            _ => Bump::Patch,
+        };
+
+        let changed_files =
+            git_all_files_changed_since_sha(since.to_string(), Some(root.to_string()));
+        let ref version = semversion.to_string();
+
+        package.update_version(version.to_string());
+        package.extend_changed_files(changed_files);
+
+        let conventional = get_conventional_for_package(
+            &package,
+            options.fetch_all,
+            Some(root.to_string()),
+            &Some(ConventionalPackageOptions {
+                version: Some(version.to_string()),
+                title: Some("# What changed?".to_string()),
+            }),
+        );
+
+        let bump = BumpPackage {
+            from: package_version.to_string(),
+            to: version.to_string(),
+            conventional_commits: conventional.conventional_commits.to_owned(),
+            package_info: package.to_owned(),
+        };
+
+        bumps.push(bump.to_owned());
+    }
+
+    bumps
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::changes::{add_change, get_change};
+    use crate::manager::PackageManager;
+    use crate::utils::create_test_monorepo;
+    use crate::paths::get_project_root_path;
+    use std::fs::remove_dir_all;
+    use std::fs::File;
+    use std::io::Write;
+    use std::process::Command;
+    use std::process::Stdio;
+    use super::*;
+
+    fn create_multiple_dependency_changes(root: &String) -> Result<(), Box<dyn std::error::Error>> {
+        let change_package_a = Change {
+            package: String::from("@scope/package-a"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        let change_package_b = Change {
+            package: String::from("@scope/package-b"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        add_change(&change_package_a, Some(root.to_string()));
+        add_change(&change_package_b, Some(root.to_string()));
+
+        Ok(())
+    }
+
+    fn create_multiple_dependency_packages(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-b/index.js");
+        let js_path_no_depend = monorepo_dir.join("packages/package-a/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello package-b";"#.as_bytes())
+            .unwrap();
+
+        let mut js_file_no_depend = File::create(&js_path_no_depend)?;
+        js_file_no_depend
+            .write_all(r#"export const message = "hello package-a";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    fn create_single_changes(root: &String) -> Result<(), Box<dyn std::error::Error>> {
+        let change_package_a = Change {
+            package: String::from("@scope/package-a"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        add_change(&change_package_a, Some(root.to_string()));
+
+        Ok(())
+    }
+
+    fn create_single_package(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-a/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello package-a";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    fn create_multiple_changes(root: &String) -> Result<(), Box<dyn std::error::Error>> {
+        let change_package_a = Change {
+            package: String::from("@scope/package-a"),
+            release_as: Bump::Major,
+            deploy: vec![String::from("production")],
+        };
+
+        let change_package_c = Change {
+            package: String::from("@scope/package-c"),
+            release_as: Bump::Minor,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        add_change(&change_package_a, Some(root.to_string()));
+        add_change(&change_package_c, Some(root.to_string()));
+
+        Ok(())
+    }
+
+    fn create_multiple_packages(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path_package_a = monorepo_dir.join("packages/package-a/index.js");
+        let js_path_package_c = monorepo_dir.join("packages/package-c/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file_package_a = File::create(&js_path_package_a)?;
+        js_file_package_a
+            .write_all(r#"export const message = "hello package-a";"#.as_bytes())
+            .unwrap();
+
+        let mut js_file_package_c = File::create(&js_path_package_c)?;
+        js_file_package_c
+            .write_all(r#"export const message = "hello package-c";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_single_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm).unwrap();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf())).unwrap();
+
+        let ref root = project_root.to_string();
+
+        create_single_package(monorepo_dir)?;
+        create_single_changes(&root)?;
+
+        let changes = get_change(String::from("feat/message"), Some(root.to_string()));
+
+        let bumps = get_bumps(BumpOptions {
+            changes,
+            since: Some(String::from("main")),
+            release_as: Some(Bump::Major),
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(bumps.len(), 1);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_multiple_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm).unwrap();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf())).unwrap();
+
+        let ref root = project_root.to_string();
+
+        create_multiple_packages(monorepo_dir)?;
+        create_multiple_changes(&root)?;
+
+        let changes = get_change(String::from("feat/message"), Some(root.to_string()));
+
+        let bumps = get_bumps(BumpOptions {
+            changes,
+            since: Some(String::from("main")),
+            release_as: None,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+}
+/*
 /// Bumps the version of dev-dependencies and dependencies.
 pub fn sync_bumps(bump_package: &BumpPackage, cwd: Option<String>) -> Vec<String> {
     let ref root = match cwd {
@@ -728,3 +1077,4 @@ mod tests {
         Ok(())
     }
 }
+*/

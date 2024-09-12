@@ -310,6 +310,41 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     vec![]
 }
 
+pub fn get_package_change(package_name: String, branch: String, cwd: Option<String>) -> Option<Change> {
+    let ref root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let root_path = Path::new(root);
+    let ref changes_path = root_path.join(String::from(".changes.json"));
+
+    if changes_path.exists() {
+        let changes_file = File::open(changes_path).unwrap();
+        let changes_reader = BufReader::new(changes_file);
+
+        let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
+
+        if changes.changes.contains_key(&branch) {
+            let branch_changes = changes.changes.get(&branch).unwrap();
+
+            let package_change = branch_changes
+                .iter()
+                .find(|change| change.package == package_name);
+
+            if let Some(change) = package_change {
+                return Some(change.clone());
+            }
+
+            return None;
+        }
+
+        return None;
+    }
+
+    None
+}
+
 /// Check if a change exists in the changes file in the root of the project.
 pub fn change_exist(branch: String, packages_name: Vec<String>, cwd: Option<String>) -> bool {
     let ref root = match cwd {

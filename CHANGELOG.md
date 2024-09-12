@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.19] - 2024-09-12
+
+### 🐛 Bug Fixes
+
+- Bump loop skip if package already bumped
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Debugging duplicated bumps
+- Maintenance format
+- Merge pull request #45 from websublime/fix/duplicated-bumps
+- Bump version
+
 ## [1.0.18] - 2024-09-11
 
 ### 🐛 Bug Fixes

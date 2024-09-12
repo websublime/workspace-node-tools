@@ -271,7 +271,9 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         let package_version = &package.version.to_string();
         let package_name = &package.name.to_string();
 
-        let already_bumped = bumps.iter().any(|b| b.conventional.package_info.name.eq(package_name));
+        let already_bumped = bumps
+            .iter()
+            .any(|b| b.conventional.package_info.name.eq(package_name));
 
         if already_bumped {
             continue;
@@ -488,9 +490,7 @@ mod tests {
         Ok(())
     }
 
-    fn create_package_change(
-        monorepo_dir: &PathBuf
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let js_path = monorepo_dir.join("packages/package-a/index.js");
 
         let branch = Command::new("git")

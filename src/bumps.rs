@@ -139,6 +139,64 @@ impl Bump {
     }
 }
 
+pub fn get_deps_graph_for_package(package: &PackageInfo) -> Vec<PackageInfo> {
+    let ref root = get_project_root_path(None).unwrap();
+
+    let packages = get_packages(Some(root.to_string()))
+        .iter()
+        .filter(|p| {
+            let package_json_map = serde_json::Map::new();
+            let mut package_json_map = package_json_map.clone();
+            package_json_map.clone_from(p.pkg_json.as_object().unwrap());
+
+            if package_json_map.contains_key("dependencies") {
+                let dependencies_value = package_json_map.get_mut("dependencies").unwrap();
+                let dependencies_value = dependencies_value.as_object_mut().unwrap();
+                let has_dependency = dependencies_value.contains_key(&package.name);
+
+                return match has_dependency {
+                    true => {
+                        let dep_version = Value::String(dependencies_value[package.name.to_string()]).to_string();
+                        let is_internal = dep_version.contains("*");
+
+                        if is_internal {
+                            return false;
+                        }
+
+                        return true;
+                    },
+                    false => false,
+                };
+            }
+
+            if package_json_map.contains_key("devDependencies") {
+                let dev_dependencies_value = package_json_map.get_mut("devDependencies").unwrap();
+                let dev_dependencies_value = dev_dependencies_value.as_object_mut().unwrap();
+                let has_dependency = dev_dependencies_value.contains_key(&package.name);
+
+                return match has_dependency {
+                    true => {
+                        let dep_version = Value::String(dev_dependencies_value[package.name.to_string()]).to_string();
+                        let is_internal = dep_version.contains("*");
+
+                        if is_internal {
+                            return false;
+                        }
+
+                        return true;
+                    },
+                    false => false,
+                };
+            }
+
+            false
+        })
+        .map(|package| package.to_owned())
+        .collect::<Vec<PackageInfo>>();
+
+    packages
+}
+
 pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -216,6 +274,10 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         };
 
         bumps.push(bump.to_owned());
+
+        if options.sync_deps.unwrap_or(false) {
+            let deps_graph = get_deps_graph_for_package(&package);
+        }
     }
 
     bumps
@@ -303,6 +365,8 @@ mod tests {
 
         Ok(())
     }
+
+    // Current debug tests
 
     fn create_single_changes(root: &String) -> Result<(), Box<dyn std::error::Error>> {
         let change_package_a = Change {
@@ -431,6 +495,63 @@ mod tests {
         Ok(())
     }
 
+    fn create_single_dependency_changes(root: &String) -> Result<(), Box<dyn std::error::Error>> {
+        let change_package_a = Change {
+            package: String::from("@scope/package-b"),
+            release_as: Bump::Snapshot,
+            deploy: vec![String::from("production")],
+        };
+
+        init_changes(Some(root.to_string()), &None);
+
+        add_change(&change_package_a, Some(root.to_string()));
+
+        Ok(())
+    }
+
+    fn create_single_dependency_package(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-b/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello package-b";"#.as_bytes())
+            .unwrap();
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
     #[test]
     fn test_single_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
         let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm).unwrap();
@@ -483,6 +604,34 @@ mod tests {
         });
 
         assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_single_dependency_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm).unwrap();
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf())).unwrap();
+
+        let ref root = project_root.to_string();
+
+        create_single_dependency_package(monorepo_dir)?;
+        create_single_dependency_changes(&root)?;
+
+        let changes = get_change(String::from("feat/message"), Some(root.to_string()));
+
+        let bumps = get_bumps(BumpOptions {
+            changes,
+            since: Some(String::from("main")),
+            release_as: None,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(2, 2);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

@@ -269,6 +269,15 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
 
     for mut package in packages {
         let package_version = &package.version.to_string();
+        let package_name = &package.name.to_string();
+
+        let already_bumped = bumps
+            .iter()
+            .any(|b| b.conventional.package_info.name.eq(package_name));
+
+        if already_bumped {
+            continue;
+        }
 
         let semversion = match release_as {
             Bump::Major => Bump::bump_major(package_version.to_string()),
@@ -305,6 +314,7 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
             release_as,
             conventional,
         };
+
         bumps.push(bump.to_owned());
 
         if options.sync_deps.unwrap_or(false) {
@@ -426,8 +436,62 @@ mod tests {
     use std::process::Command;
     use std::process::Stdio;
 
-    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn create_packages_change(
+        monorepo_dir: &PathBuf,
+        touch_no_dependent: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let js_path = monorepo_dir.join("packages/package-b/index.js");
+        let js_path_no_depend = monorepo_dir.join("packages/package-a/index.js");
+
+        let branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file
+            .write_all(r#"export const message = "hello";"#.as_bytes())
+            .unwrap();
+
+        if touch_no_dependent {
+            let mut js_file_no_depend = File::create(&js_path_no_depend)?;
+            js_file_no_depend
+                .write_all(r#"export const message = "hello";"#.as_bytes())
+                .unwrap();
+        }
+
+        let add = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        Ok(())
+    }
+
+    fn create_package_change(monorepo_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        let js_path = monorepo_dir.join("packages/package-a/index.js");
 
         let branch = Command::new("git")
             .current_dir(&monorepo_dir)
@@ -470,11 +534,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_bumps() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_get_bumps_with_dependency() -> Result<(), Box<dyn std::error::Error>> {
         let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        create_package_change(monorepo_dir)?;
+        create_packages_change(monorepo_dir, true)?;
 
         let ref root = project_root.unwrap().to_string();
 
@@ -500,11 +564,71 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_bumps() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_get_bumps_without_dependency() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_packages_change(monorepo_dir, false)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        let bumps = get_bumps(BumpOptions {
+            packages,
+            since: Some(String::from("main")),
+            release_as: Bump::Minor,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(bumps.len(), 2);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_single_bump() -> Result<(), Box<dyn std::error::Error>> {
         let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
         create_package_change(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        let bumps = get_bumps(BumpOptions {
+            packages,
+            since: Some(String::from("main")),
+            release_as: Bump::Minor,
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        });
+
+        assert_eq!(bumps.len(), 1);
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_packages_change(monorepo_dir, false)?;
 
         let ref root = project_root.unwrap().to_string();
 
@@ -556,7 +680,7 @@ mod tests {
         let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
-        create_package_change(monorepo_dir)?;
+        create_packages_change(monorepo_dir, false)?;
 
         let ref root = project_root.unwrap().to_string();
 

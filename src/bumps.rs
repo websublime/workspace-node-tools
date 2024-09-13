@@ -139,10 +139,10 @@ impl Bump {
     }
 }
 
-pub fn get_deps_graph_for_package(package: &PackageInfo) -> Vec<PackageInfo> {
-    let ref root = get_project_root_path(None).unwrap();
+pub fn get_deps_graph_for_package(package: &PackageInfo, root: &String) -> Vec<PackageInfo> {
+    let monorepo_packages = get_packages(Some(root.to_string()));
 
-    let packages = get_packages(Some(root.to_string()))
+    let packages = monorepo_packages
         .iter()
         .filter(|p| {
             let package_json_map = serde_json::Map::new();
@@ -156,12 +156,15 @@ pub fn get_deps_graph_for_package(package: &PackageInfo) -> Vec<PackageInfo> {
 
                 return match has_dependency {
                     true => {
-                        let dep_version = Value::String(dependencies_value[package.name.to_string()]).to_string();
+                        let dep_version = Value::String(dependencies_value[&package.name.to_string()].to_string()).to_string();
                         let is_internal = dep_version.contains("*");
 
                         if is_internal {
                             return false;
                         }
+
+                        //pkg.update_dependency_version(package.name.to_string(), dep_version.to_string());
+                        //p.extend_changed_files(vec![String::from("package.json")]);
 
                         return true;
                     },
@@ -176,12 +179,15 @@ pub fn get_deps_graph_for_package(package: &PackageInfo) -> Vec<PackageInfo> {
 
                 return match has_dependency {
                     true => {
-                        let dep_version = Value::String(dev_dependencies_value[package.name.to_string()]).to_string();
+                        let dep_version = Value::String(dev_dependencies_value[&package.name.to_string()].to_string()).to_string();
                         let is_internal = dep_version.contains("*");
 
                         if is_internal {
                             return false;
                         }
+
+                        //p.update_dev_dependency_version(package.name.to_string(), dep_version.to_string());
+                        //p.extend_changed_files(vec![String::from("package.json")]);
 
                         return true;
                     },
@@ -232,10 +238,15 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         let package_name = &package.name.to_string();
         let package_change = get_package_change(package_name.to_string(), current_branch.to_string(), Some(root.to_string()));
 
-        let release_as = options.release_as.unwrap_or_else(|| match package_change {
+        let release_as = options.release_as.unwrap_or_else(|| match package_change.to_owned() {
             Some(change) => change.release_as,
             None => Bump::Patch,
         });
+
+        let deploy_to = match package_change.to_owned() {
+            Some(change) => change.deploy,
+            None => vec![String::from("production")]
+        };
 
         let semversion = match release_as {
             Bump::Major => Bump::bump_major(package_version.to_string()),
@@ -276,7 +287,22 @@ pub fn get_bumps(options: BumpOptions) -> Vec<BumpPackage> {
         bumps.push(bump.to_owned());
 
         if options.sync_deps.unwrap_or(false) {
-            let deps_graph = get_deps_graph_for_package(&package);
+            let mut deps_graph = get_deps_graph_for_package(&package, root);
+
+            // Change the version of the dependencies in deps_graph
+            for mut dep in deps_graph.iter_mut() {
+                dep.update_dependency_version(package.name.to_string(), version.to_string());
+                dep.extend_changed_files(vec![String::from("package.json")]);
+            }
+
+            let deps_changes = deps_graph.iter().map(|dep| Change {
+                package: dep.name.to_string(),
+                release_as: Bump::Patch,
+                deploy: deploy_to.to_owned(),
+            }).collect::<Vec<Change>>();
+
+            dbg!(deps_changes);
+            dbg!(deps_graph);
         }
     }
 

@@ -110,6 +110,18 @@ impl PackageInfo {
         self.version = version.to_string();
         self.pkg_json["version"] = Value::String(version.to_string());
     }
+
+    /// Updates a dependency version in the package.json file.
+    pub fn update_dependency_version(&mut self, dependency: String, version: String) {
+        let dependencies = self.pkg_json["dependencies"].as_object_mut().unwrap();
+        dependencies.insert(dependency, Value::String(version));
+    }
+
+    /// Updates a dev dependency version in the package.json file.
+    pub fn update_dev_dependency_version(&mut self, dependency: String, version: String) {
+        let dev_dependencies = self.pkg_json["devDependencies"].as_object_mut().unwrap();
+        dev_dependencies.insert(dependency, Value::String(version));
+    }
 }
 
 /// Returns package info domain, scope and repository name.

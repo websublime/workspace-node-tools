@@ -83,12 +83,14 @@ pub(crate) fn create_test_monorepo(
     let monorepo_package_a_dir = monorepo_packages_dir.join("package-a");
     let monorepo_package_b_dir = monorepo_packages_dir.join("package-b");
     let monorepo_package_c_dir = monorepo_packages_dir.join("package-c");
+    let monorepo_package_d_dir = monorepo_packages_dir.join("package-d");
 
     create_dir(&monorepo_temp_dir)?;
     create_dir(&monorepo_packages_dir)?;
     create_dir(&monorepo_package_a_dir)?;
     create_dir(&monorepo_package_b_dir)?;
     create_dir(&monorepo_package_c_dir)?;
+    create_dir(&monorepo_package_d_dir)?;
 
     #[cfg(not(windows))]
     std::fs::set_permissions(&monorepo_temp_dir, std::fs::Permissions::from_mode(0o777))?;
@@ -100,7 +102,8 @@ pub(crate) fn create_test_monorepo(
         "workspaces": [
             "packages/package-a",
             "packages/package-b",
-            "packages/package-c"
+            "packages/package-c",
+            "packages/package-d"
         ]
     }"#;
     let package_root_json = serde_json::from_str::<serde_json::Value>(monorepo_root_json).unwrap();
@@ -241,6 +244,51 @@ pub(crate) fn create_test_monorepo(
         .unwrap();
     let monorepo_package_c_json_writer = BufWriter::new(monorepo_package_c_json_file);
     serde_json::to_writer_pretty(monorepo_package_c_json_writer, &package_c_json).unwrap();
+
+    let package_d_json = r#"
+    {
+        "name": "@scope/package-d",
+        "version": "1.0.0",
+        "description": "My new package D",
+        "main": "index.mjs",
+        "module": "./dist/index.mjs",
+        "exports": {
+          ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.mjs"
+          }
+        },
+        "typesVersions": {
+          "*": {
+            "index.d.ts": [
+              "./dist/index.d.ts"
+            ]
+          }
+        },
+        "repository": {
+          "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
+          "type": "git"
+        },
+        "scripts": {
+          "test": "echo \"Error: no test specified\" && exit 1",
+          "dev": "node index.mjs"
+        },
+        "dependencies": {
+          "@scope/package-a": "1.0.0"
+        },
+        "keywords": [],
+        "author": "Author",
+        "license": "ISC"
+    }"#;
+    let package_d_json = serde_json::from_str::<serde_json::Value>(package_d_json).unwrap();
+    let monorepo_package_d_json_file = OpenOptions::new()
+        .write(true)
+        .append(false)
+        .create(true)
+        .open(&monorepo_package_d_dir.join("package.json").as_path())
+        .unwrap();
+    let monorepo_package_d_json_writer = BufWriter::new(monorepo_package_d_json_file);
+    serde_json::to_writer_pretty(monorepo_package_d_json_writer, &package_d_json).unwrap();
 
     match package_manager {
         PackageManager::Yarn => {

@@ -310,7 +310,11 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     vec![]
 }
 
-pub fn get_package_change(package_name: String, branch: String, cwd: Option<String>) -> Option<Change> {
+pub fn get_package_change(
+    package_name: String,
+    branch: String,
+    cwd: Option<String>,
+) -> Option<Change> {
     let ref root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
         None => get_project_root_path(None).unwrap(),

@@ -113,14 +113,38 @@ impl PackageInfo {
 
     /// Updates a dependency version in the package.json file.
     pub fn update_dependency_version(&mut self, dependency: String, version: String) {
-        let dependencies = self.pkg_json["dependencies"].as_object_mut().unwrap();
-        dependencies.insert(dependency, Value::String(version));
+        let package_json = self.pkg_json.as_object().unwrap();
+
+        if package_json.contains_key("dependencies") {
+            let dependencies = self.pkg_json["dependencies"].as_object_mut().unwrap();
+            let has_dependency = dependencies.contains_key(&dependency);
+
+            if has_dependency {
+                dependencies.insert(dependency, Value::String(version));
+            }
+        }
     }
 
     /// Updates a dev dependency version in the package.json file.
     pub fn update_dev_dependency_version(&mut self, dependency: String, version: String) {
-        let dev_dependencies = self.pkg_json["devDependencies"].as_object_mut().unwrap();
-        dev_dependencies.insert(dependency, Value::String(version));
+        let package_json = self.pkg_json.as_object().unwrap();
+
+        if package_json.contains_key("devDependencies") {
+            let dev_dependencies = self.pkg_json["devDependencies"].as_object_mut().unwrap();
+            let has_dependency = dev_dependencies.contains_key(&dependency);
+
+            if has_dependency {
+                dev_dependencies.insert(dependency, Value::String(version));
+            }
+        }
+    }
+
+    /// Write package.json file with the updated version.
+    pub fn write_package_json(&self) {
+        let package_json_file = std::fs::File::create(&self.package_json_path).unwrap();
+        let package_json_writer = std::io::BufWriter::new(package_json_file);
+
+        serde_json::to_writer_pretty(package_json_writer, &self.pkg_json).unwrap();
     }
 }
 

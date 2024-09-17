@@ -47,6 +47,7 @@ pub struct PackageInfo {
     pub url: String,
     pub repository_info: Option<PackageRepositoryInfo>,
     pub changed_files: Vec<String>,
+    pub dependencies: Vec<DependencyInfo>,
 }
 
 #[cfg(not(feature = "napi"))]
@@ -203,6 +204,19 @@ fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
         orga: orga.to_string().replace("/", ""),
         project: project.to_string().replace("/", "").replace(".git", ""),
     }
+}
+
+pub fn get_package_info(package_name: String, cwd: Option<String>) -> Option<PackageInfo> {
+    let project_root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let packages = get_packages(Some(project_root));
+
+    packages
+        .into_iter()
+        .find(|package| package.name == package_name)
 }
 
 /// Get defined package manager in the monorepo
@@ -463,9 +477,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
     };
 
     for pkg in packages.iter_mut() {
-        let package_json_file = std::fs::File::open(&pkg.package_json_path).unwrap();
-        let package_json_reader = std::io::BufReader::new(package_json_file);
-        let pkg_json: serde_json::Value = serde_json::from_reader(package_json_reader).unwrap();
+        let pkg_json: serde_json::Value = serde_json::from_value(pkg.pkg_json.clone()).unwrap();
         let package_json = pkg_json.as_object().unwrap();
 
         if package_json.contains_key("dependencies") {

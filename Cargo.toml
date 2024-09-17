@@ -18,8 +18,8 @@ serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 regex = "1.10.6"
 wax = { version = "0.6.0", features = ["walk"] }
-napi-derive = { version = "2.16.11", optional = true }
-napi = { version = "2.16.9", default-features = false, features = [
+napi-derive = { version = "2.16.12", optional = true }
+napi = { version = "2.16.10", default-features = false, features = [
   "napi9",
   "serde-json",
   "tokio_rt",
@@ -30,6 +30,7 @@ git-cliff-core = "2.5.0"
 chrono = "0.4.38"
 semver = "1.0.23"
 rand = "0.8.5"
+petgraph = "0.6.5"
 
 [build-dependencies]
 vergen = { version = "8.3.2", features = [

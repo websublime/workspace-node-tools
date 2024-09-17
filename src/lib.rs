@@ -23,3 +23,5 @@ pub mod conventional;
 pub mod bumps;
 
 pub mod changes;
+
+pub mod dependency;

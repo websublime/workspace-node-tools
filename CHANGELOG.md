@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2024-09-19
+
+### 🚀 Features
+
+- Bumps by changes
+- Init bumps deps graph
+- Dependency graph implementation in get_packages
+- Implemented and tested get_bumps with changes
+- Apply bumps
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Deps graph updates
+- Deep tests and evaluate solution
+- Filter deps with changed packages
+- Deps evaluation
+- Bump tom version
+- Napi structure missing
+- Merge pull request #48 from websublime/feature/bumps-by-changes
+
 ## [1.0.19] - 2024-09-12
 
 ### 🐛 Bug Fixes

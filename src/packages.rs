@@ -206,6 +206,7 @@ fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
     }
 }
 
+/// Returns the package info of the package with the provided name.
 pub fn get_package_info(package_name: String, cwd: Option<String>) -> Option<PackageInfo> {
     let project_root = match cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -620,7 +621,6 @@ mod tests {
         let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
 
         let packages = get_packages(project_root);
-        dbg!(&packages);
 
         assert_eq!(packages.len(), 4);
         remove_dir_all(&monorepo_dir)?;

@@ -310,6 +310,7 @@ pub fn get_change(branch: String, cwd: Option<String>) -> Vec<Change> {
     vec![]
 }
 
+/// Get a change for a specific package from the changes file in the root of the project.
 pub fn get_package_change(
     package_name: String,
     branch: String,

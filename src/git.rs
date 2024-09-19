@@ -918,7 +918,7 @@ mod tests {
         let result = get_remote_or_local_tags(project_root, Some(true));
         let count = result.len();
 
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

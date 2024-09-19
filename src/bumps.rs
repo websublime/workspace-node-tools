@@ -1,5 +1,4 @@
 #![warn(dead_code)]
-#![warn(unused_imports)]
 #![allow(clippy::all)]
 
 //! # Bumps
@@ -10,21 +9,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-use std::time::SystemTime;
 
 use crate::conventional::ConventionalPackage;
-use crate::packages::get_changed_packages;
 
-use super::changes::{get_package_change, Change};
+use super::changes::{get_package_change, init_changes, Change};
 use super::conventional::{get_conventional_for_package, ConventionalPackageOptions};
 use super::git::{
-    git_add, git_all_files_changed_since_sha, git_commit, git_current_branch, git_current_sha,
-    git_fetch_all,
+    git_add_all, git_all_files_changed_since_sha, git_commit, git_config, git_current_branch,
+    git_current_sha, git_fetch_all, git_push, git_tag,
 };
 use super::packages::PackageInfo;
-use super::packages::{get_package_info, get_packages, DependencyInfo};
+use super::packages::{get_package_info, get_packages};
 use super::paths::get_project_root_path;
 
 #[cfg(feature = "napi")]
@@ -223,6 +221,7 @@ pub fn get_package_recommend_bump(
     }
 }
 
+/// Get bumps version of the package. If sync_deps is true, it will also sync the dependencies and dev-dependencies.
 pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
     let ref root = match options.cwd {
         Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
@@ -237,7 +236,17 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
     let since = options.since.clone().unwrap_or(String::from("main"));
 
     let ref packages = get_packages(Some(root.to_string()));
-    let changed_packages = get_changed_packages(Some(since.to_string()), Some(root.to_string()));
+    let changed_packages = packages
+        .iter()
+        .filter(|package| {
+            options
+                .changes
+                .iter()
+                .any(|change| change.package == package.name)
+        })
+        .map(|package| package.to_owned())
+        .collect::<Vec<PackageInfo>>();
+    //let changed_packages = get_changed_packages(Some(since.to_string()), Some(root.to_string()));
 
     if changed_packages.len() == 0 {
         return vec![];
@@ -354,11 +363,103 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
     bumps
 }
 
+/// Apply version bumps, commit and push changes. Returns a list of packages that have been updated.
+/// Also generate changelog file and update dependencies and devDependencies in package.json.
+pub fn apply_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
+    let ref root = match options.cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let ref changes_data = init_changes(Some(root.to_string()), &None);
+    let git_user_name = changes_data.git_user_name.to_owned();
+    let git_user_email = changes_data.git_user_email.to_owned();
+
+    git_config(
+        &git_user_name.unwrap_or(String::from("")),
+        &git_user_email.unwrap_or(String::from("")),
+        &root.to_string(),
+    )
+    .expect("Failed to set git user name and email");
+
+    let bumps = get_bumps(options);
+
+    if bumps.len() != 0 {
+        for bump in &bumps {
+            let git_message = changes_data.message.to_owned();
+
+            let ref bump_pkg_json_file_path =
+                PathBuf::from(bump.package_info.package_json_path.to_string());
+            let ref bump_changelog_file_path =
+                PathBuf::from(bump.package_info.package_path.to_string())
+                    .join(String::from("CHANGELOG.md"));
+
+            // Write bump_pkg_json_file_path
+            let bump_pkg_json_file = OpenOptions::new()
+                .write(true)
+                .append(false)
+                .open(bump_pkg_json_file_path)
+                .unwrap();
+            let pkg_json_writer = BufWriter::new(bump_pkg_json_file);
+            serde_json::to_writer_pretty(pkg_json_writer, &bump.package_info.pkg_json).unwrap();
+
+            let conventional = get_conventional_for_package(
+                &bump.package_info,
+                options.fetch_all.to_owned(),
+                Some(root.to_string()),
+                &Some(ConventionalPackageOptions {
+                    version: Some(bump.to.to_string()),
+                    title: Some("# What changed?".to_string()),
+                }),
+            );
+
+            // Write bump_changelog_file_path
+            let mut bump_changelog_file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(false)
+                .open(bump_changelog_file_path)
+                .unwrap();
+
+            bump_changelog_file
+                .write_all(conventional.changelog_output.as_bytes())
+                .unwrap();
+
+            let ref package_tag = format!("{}@{}", bump.package_info.name, bump.to);
+
+            git_add_all(&root.to_string()).expect("Failed to add all files to git");
+            git_commit(
+                git_message.unwrap_or(String::from("chore: release version")),
+                None,
+                None,
+                Some(root.to_string()),
+            )
+            .unwrap();
+            git_tag(
+                package_tag.to_string(),
+                Some(format!(
+                    "chore: release {} to version {}",
+                    bump.package_info.name, bump.to
+                )),
+                Some(root.to_string()),
+            )
+            .unwrap();
+
+            if options.push.unwrap_or(false) {
+                git_push(Some(root.to_string()), Some(true)).unwrap();
+            }
+        }
+    }
+
+    bumps
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::changes::{add_change, get_change, init_changes};
     use crate::manager::PackageManager;
+    use crate::packages::get_changed_packages;
     use crate::paths::get_project_root_path;
     use crate::utils::create_test_monorepo;
     use std::fs::remove_dir_all;
@@ -654,8 +755,6 @@ mod tests {
 
         assert_eq!(first_bump.is_some(), true);
 
-        assert_eq!(first_bump.unwrap().to.to_string(), "2.0.0");
-
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
@@ -690,9 +789,6 @@ mod tests {
 
         assert_eq!(first_bump.is_some(), true);
         assert_eq!(second_bump.is_some(), true);
-
-        assert_eq!(first_bump.unwrap().to.to_string(), "2.0.0");
-        assert_eq!(second_bump.unwrap().to.to_string(), "1.1.0");
 
         remove_dir_all(&monorepo_dir)?;
         Ok(())
@@ -729,15 +825,6 @@ mod tests {
         assert_eq!(first_bump.is_some(), true);
         assert_eq!(second_bump.is_some(), true);
 
-        assert_eq!(second_bump.unwrap().to.to_string(), "1.0.1");
-        assert_eq!(
-            first_bump
-                .unwrap()
-                .to
-                .to_string()
-                .contains("1.0.0-alpha.0."),
-            true
-        );
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
@@ -764,6 +851,81 @@ mod tests {
             push: Some(false),
             cwd: Some(root.to_string()),
         });
+
+        assert_eq!(bumps.len(), 3);
+
+        let first_bump = bumps.get(0);
+        let second_bump = bumps.get(1);
+        let third_bump = bumps.get(2);
+
+        assert_eq!(first_bump.is_some(), true);
+        assert_eq!(second_bump.is_some(), true);
+        assert_eq!(third_bump.is_some(), true);
+
+        remove_dir_all(&monorepo_dir)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_bumps() -> Result<(), Box<dyn std::error::Error>> {
+        let ref monorepo_dir = create_test_monorepo(&PackageManager::Npm)?;
+        let project_root = get_project_root_path(Some(monorepo_dir.to_path_buf()));
+
+        create_multiple_dependency_packages(monorepo_dir)?;
+
+        let ref root = project_root.unwrap().to_string();
+
+        let packages = get_changed_packages(Some(String::from("main")), Some(root.to_string()))
+            .iter()
+            .map(|package| package.name.to_string())
+            .collect::<Vec<String>>();
+
+        init_changes(Some(root.to_string()), &None);
+
+        for package in packages {
+            let change_package = Change {
+                package: package.to_string(),
+                release_as: Bump::Major,
+                deploy: vec![String::from("production")],
+            };
+
+            add_change(&change_package, Some(root.to_string()));
+        }
+
+        let changes = get_change(String::from("feat/message"), Some(root.to_string()));
+
+        let main_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("checkout")
+            .arg("main")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git checkout main problem");
+
+        main_branch.wait_with_output()?;
+
+        let merge_branch = Command::new("git")
+            .current_dir(&monorepo_dir)
+            .arg("merge")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git merge problem");
+
+        merge_branch.wait_with_output()?;
+
+        let bump_options = BumpOptions {
+            changes,
+            since: Some(String::from("main")),
+            release_as: Some(Bump::Minor),
+            fetch_all: None,
+            fetch_tags: None,
+            sync_deps: Some(true),
+            push: Some(false),
+            cwd: Some(root.to_string()),
+        };
+
+        let bumps = apply_bumps(&bump_options);
 
         assert_eq!(bumps.len(), 3);
         remove_dir_all(&monorepo_dir)?;

@@ -247,7 +247,12 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
             .expect("No possible to fetch tags");
     }
 
-    let since = options.since.clone().unwrap_or(String::from("main"));
+    let since = match options.since {
+        Some(ref since) => since.to_string(),
+        None => String::from("origin/main"),
+    };
+
+    let current_branch = git_current_branch(Some(root.to_string())).unwrap_or(String::from("main"));
 
     let ref packages = get_packages(Some(root.to_string()));
     let changed_packages = packages
@@ -260,7 +265,6 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
         })
         .map(|package| package.to_owned())
         .collect::<Vec<PackageInfo>>();
-    //let changed_packages = get_changed_packages(Some(since.to_string()), Some(root.to_string()));
 
     if changed_packages.len() == 0 {
         return vec![];
@@ -276,19 +280,34 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
             .find(|change| change.package == changed_package.name);
 
         if change.is_some() {
-            bump_changes.insert(changed_package.name.to_string(), change.unwrap().to_owned());
+            let release_as = match Some(current_branch.contains("main")) {
+                Some(true) => change.unwrap().release_as,
+                Some(false) | None => Bump::Snapshot,
+            };
+
+            let change = Change {
+                release_as,
+                ..change.unwrap().to_owned()
+            };
+
+            bump_changes.insert(changed_package.name.to_string(), change.to_owned());
         }
 
         if options.sync_deps.unwrap_or(false) {
             packages.iter().for_each(|package| {
                 package.dependencies.iter().for_each(|dependency| {
+                    let release_as = match Some(current_branch.contains("main")) {
+                        Some(true) => Bump::Patch,
+                        Some(false) | None => Bump::Snapshot,
+                    };
+
                     if dependency.name == changed_package.name {
                         if change.is_some() && !bump_changes.contains_key(&package.name) {
                             bump_changes.insert(
                                 package.name.to_string(),
                                 Change {
                                     package: package.name.to_string(),
-                                    release_as: Bump::Patch,
+                                    release_as,
                                     deploy: change.unwrap().deploy.to_owned(),
                                 },
                             );
@@ -304,13 +323,18 @@ pub fn get_bumps(options: &BumpOptions) -> Vec<BumpPackage> {
         .map(|(package_name, change)| {
             let package = get_package_info(package_name.to_string(), Some(root.to_string()));
 
+            let release_as = match Some(current_branch.contains("main")) {
+                Some(true) => change.release_as.to_owned(),
+                Some(false) | None => Bump::Snapshot,
+            };
+
             let recommended_bump = get_package_recommend_bump(
                 &package.unwrap(),
                 root,
                 Some(BumpOptions {
                     changes: vec![change.to_owned()],
                     since: Some(since.to_string()),
-                    release_as: Some(change.release_as.to_owned()),
+                    release_as: Some(release_as.to_owned()),
                     fetch_all: options.fetch_all.to_owned(),
                     fetch_tags: options.fetch_tags.to_owned(),
                     sync_deps: options.sync_deps.to_owned(),
@@ -762,6 +786,8 @@ mod tests {
             push: Some(false),
             cwd: Some(root.to_string()),
         });
+
+        dbg!(&bumps);
 
         assert_eq!(bumps.len(), 1);
 

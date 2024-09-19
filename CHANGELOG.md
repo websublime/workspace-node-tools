@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.1] - 2024-09-19
+
+### 🐛 Bug Fixes
+
+- Snapshot versions for branches
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Merge pull request #49 from websublime/fix/release-as
+
 ## [2.0.0] - 2024-09-19
 
 ### 🚀 Features

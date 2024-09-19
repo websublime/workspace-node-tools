@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use wax::{CandidatePath, Glob, Pattern};
 
+use super::dependency::Node;
 use super::git::get_all_files_changed_since_branch;
 use super::manager::{detect_package_manager, PackageManager};
 use super::paths::get_project_root_path;
@@ -46,6 +47,7 @@ pub struct PackageInfo {
     pub url: String,
     pub repository_info: Option<PackageRepositoryInfo>,
     pub changed_files: Vec<String>,
+    pub dependencies: Vec<DependencyInfo>,
 }
 
 #[cfg(not(feature = "napi"))]
@@ -63,6 +65,7 @@ pub struct PackageInfo {
     pub url: String,
     pub repository_info: Option<PackageRepositoryInfo>,
     pub changed_files: Vec<String>,
+    pub dependencies: Vec<DependencyInfo>,
 }
 
 #[cfg(feature = "napi")]
@@ -81,6 +84,38 @@ pub struct PackageRepositoryInfo {
     pub domain: String,
     pub orga: String,
     pub project: String,
+}
+
+#[cfg(feature = "napi")]
+#[napi(object)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct DependencyInfo {
+    pub name: String,
+    pub version: String,
+}
+
+#[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct DependencyInfo {
+    pub name: String,
+    pub version: String,
+}
+
+impl Node for PackageInfo {
+    type DependencyType = DependencyInfo;
+
+    fn dependencies(&self) -> &[Self::DependencyType] {
+        &self.dependencies[..]
+    }
+
+    fn matches(&self, dependency: &Self::DependencyType) -> bool {
+        let dependency_version = semver::VersionReq::parse(&dependency.version).unwrap();
+        let self_version = semver::Version::parse(&self.version).unwrap();
+
+        // Check that name is an exact match, and that the dependency
+        // requirements are fulfilled by our own version
+        self.name == dependency.name && dependency_version.matches(&self_version)
+    }
 }
 
 impl PackageInfo {
@@ -105,10 +140,50 @@ impl PackageInfo {
         self.changed_files.extend(founded_files);
     }
 
+    pub fn push_dependency(&mut self, dependency: DependencyInfo) {
+        self.dependencies.push(dependency);
+    }
+
     /// Updates the version of the package.
     pub fn update_version(&mut self, version: String) {
         self.version = version.to_string();
         self.pkg_json["version"] = Value::String(version.to_string());
+    }
+
+    /// Updates a dependency version in the package.json file.
+    pub fn update_dependency_version(&mut self, dependency: String, version: String) {
+        let package_json = self.pkg_json.as_object().unwrap();
+
+        if package_json.contains_key("dependencies") {
+            let dependencies = self.pkg_json["dependencies"].as_object_mut().unwrap();
+            let has_dependency = dependencies.contains_key(&dependency);
+
+            if has_dependency {
+                dependencies.insert(dependency, Value::String(version));
+            }
+        }
+    }
+
+    /// Updates a dev dependency version in the package.json file.
+    pub fn update_dev_dependency_version(&mut self, dependency: String, version: String) {
+        let package_json = self.pkg_json.as_object().unwrap();
+
+        if package_json.contains_key("devDependencies") {
+            let dev_dependencies = self.pkg_json["devDependencies"].as_object_mut().unwrap();
+            let has_dependency = dev_dependencies.contains_key(&dependency);
+
+            if has_dependency {
+                dev_dependencies.insert(dependency, Value::String(version));
+            }
+        }
+    }
+
+    /// Write package.json file with the updated version.
+    pub fn write_package_json(&self) {
+        let package_json_file = std::fs::File::create(&self.package_json_path).unwrap();
+        let package_json_writer = std::io::BufWriter::new(package_json_file);
+
+        serde_json::to_writer_pretty(package_json_writer, &self.pkg_json).unwrap();
     }
 }
 
@@ -131,6 +206,20 @@ fn get_package_repository_info(url: &String) -> PackageRepositoryInfo {
     }
 }
 
+/// Returns the package info of the package with the provided name.
+pub fn get_package_info(package_name: String, cwd: Option<String>) -> Option<PackageInfo> {
+    let project_root = match cwd {
+        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
+        None => get_project_root_path(None).unwrap(),
+    };
+
+    let packages = get_packages(Some(project_root));
+
+    packages
+        .into_iter()
+        .find(|package| package.name == package_name)
+}
+
 /// Get defined package manager in the monorepo
 pub fn get_monorepo_package_manager(cwd: Option<String>) -> Option<PackageManager> {
     let project_root = match cwd {
@@ -151,7 +240,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
     };
     let package_manager = get_monorepo_package_manager(Some(project_root.to_string()));
 
-    return match package_manager {
+    let mut packages = match package_manager {
         Some(PackageManager::Pnpm) => {
             let path = Path::new(&project_root);
             let pnpm_workspace = path.join("pnpm-workspace.yaml");
@@ -244,6 +333,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                         url: String::from(repo_url),
                         repository_info: Some(repository_info),
                         changed_files: vec![],
+                        dependencies: vec![],
                     }
                 })
                 .filter(|pkg| !pkg.root)
@@ -374,6 +464,7 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
                         url: repo_url.to_string(),
                         repository_info: Some(repository_info),
                         changed_files: vec![],
+                        dependencies: vec![],
                     };
 
                     packages.push(pkg_info);
@@ -385,6 +476,43 @@ pub fn get_packages(cwd: Option<String>) -> Vec<PackageInfo> {
         Some(PackageManager::Bun) => vec![],
         None => vec![],
     };
+
+    for pkg in packages.iter_mut() {
+        let pkg_json: serde_json::Value = serde_json::from_value(pkg.pkg_json.clone()).unwrap();
+        let package_json = pkg_json.as_object().unwrap();
+
+        if package_json.contains_key("dependencies") {
+            let deps = package_json.get("dependencies").unwrap();
+
+            if deps.is_object() {
+                let deps = deps.as_object().unwrap();
+
+                for (name, version) in deps {
+                    pkg.push_dependency(DependencyInfo {
+                        name: name.to_string(),
+                        version: version.as_str().unwrap().to_string(),
+                    });
+                }
+            }
+        }
+
+        if package_json.contains_key("devDependencies") {
+            let deps = package_json.get("devDependencies").unwrap();
+
+            if deps.is_object() {
+                let deps = deps.as_object().unwrap();
+
+                for (name, version) in deps {
+                    pkg.push_dependency(DependencyInfo {
+                        name: name.to_string(),
+                        version: version.as_str().unwrap().to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    packages
 }
 
 /// Get a list of packages that have changed since a given sha
@@ -494,7 +622,7 @@ mod tests {
 
         let packages = get_packages(project_root);
 
-        assert_eq!(packages.len(), 2);
+        assert_eq!(packages.len(), 4);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
@@ -506,7 +634,7 @@ mod tests {
 
         let packages = get_packages(project_root);
 
-        assert_eq!(packages.len(), 2);
+        assert_eq!(packages.len(), 4);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
@@ -518,7 +646,7 @@ mod tests {
 
         let packages = get_packages(project_root);
 
-        assert_eq!(packages.len(), 2);
+        assert_eq!(packages.len(), 4);
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }

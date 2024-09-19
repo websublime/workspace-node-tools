@@ -1,4 +1,5 @@
 #![warn(dead_code)]
+#![allow(unused_imports)]
 #![allow(clippy::all)]
 
 //! # Bumps
@@ -94,6 +95,19 @@ pub struct BumpPackage {
 }
 
 #[cfg(not(feature = "napi"))]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+/// Struct representing the bump package.
+pub struct RecommendBumpPackage {
+    pub from: String,
+    pub to: String,
+    pub package_info: PackageInfo,
+    pub conventional: ConventionalPackage,
+    pub changed_files: Vec<String>,
+    pub deploy_to: Vec<String>,
+}
+
+#[cfg(feature = "napi")]
+#[napi(object)]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 /// Struct representing the bump package.
 pub struct RecommendBumpPackage {

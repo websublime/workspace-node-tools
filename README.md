@@ -40,3 +40,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Info
 
 Template from [here](https://rust-github.github.io/)
+
+TODO:
+
+- SemVersion regex
+
+```rust
+let regex = Regex::new(r"(?m)(?<major>^(0|[1-9]\d*))\.(?<minor>(0|[1-9]\d*))\.(?<patch>(0|[1-9]\d*))(?<pre>(-[a-zA-Z\d][-a-zA-Z.\d]*))?(?<meta>(\+[a-zA-Z\d][-a-zA-Z.\d]*))?$").unwrap();
+```
+
+- PackageInfo url buggy when url is git+ssh
+- Bump release_as not being used
+- Add Rc bump
+- Change snapshot bum without 0

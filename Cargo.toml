@@ -26,7 +26,7 @@ napi = { version = "2.16.10", default-features = false, features = [
 ], optional = true }
 icu = "1.5.0"
 version-compare = "0.2"
-git-cliff-core = "2.5.0"
+git-cliff-core = "2.6.0"
 chrono = "0.4.38"
 semver = "1.0.23"
 rand = "0.8.5"

@@ -196,10 +196,7 @@ fn define_config(
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(
-                                Regex::new("^refactor\\(clippy\\)")
-                                    .expect("failed to compile regex"),
-                            ),
+                            message: Regex::new("^refactor\\(clippy\\)").ok(),
                             skip: Some(true),
                             ..CommitParser::default()
                         },

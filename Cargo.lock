@@ -2828,6 +2828,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "url",
  "vergen",
  "version-compare",
  "wax",

@@ -668,4 +668,20 @@ mod tests {
         remove_dir_all(&monorepo_dir)?;
         Ok(())
     }
+
+    #[test]
+    fn test_get_package_repository_info() -> Result<(), Box<dyn std::error::Error>> {
+        //https://stackoverflow.com/questions/31801271/what-are-the-supported-git-url-formats
+        //let regex = Regex::new(r"(?m)[A-Za-z0-9][A-Za-z0-9+.-]*").unwrap();
+
+        //let u = url::Url::parse("host.xz:path/to/repo.git")?;
+        //let u = url::Url::parse("ssh://git@github.com:websublime/workspace-node-binding-tools.git")?;
+
+        let u = get_package_repository_info(
+            &"ssh://git@github.com:websublime/workspace-node-binding-tools.git".to_string(),
+        );
+        dbg!(u);
+        assert_eq!(1, 1);
+        Ok(())
+    }
 }

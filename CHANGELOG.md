@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.2] - 2024-09-23
+
+### 🐛 Bug Fixes
+
+- Filter unwanted commits not following conventional rules
+
+### ⚙️ Miscellaneous Tasks
+
+- Maintenance changelog
+- Commit parser fix
+- Merge pull request #52 from websublime/fix/git-commits-process
+
 ## [2.0.1] - 2024-09-19
 
 ### 🐛 Bug Fixes

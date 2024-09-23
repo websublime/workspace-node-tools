@@ -63,6 +63,22 @@ pub struct ConventionalPackageOptions {
 fn process_commits<'a>(commits: &Vec<Commit>, config: &GitConfig) -> Vec<GitCommit<'a>> {
     commits
         .iter()
+        .filter(|commit| {
+            let timestamp = chrono::DateTime::parse_from_rfc2822(&commit.author_date).unwrap();
+
+            let git_commit = GitCommit {
+                id: commit.hash.to_string(),
+                message: commit.message.to_string(),
+                author: Signature {
+                    name: Some(commit.author_name.to_string()),
+                    email: Some(commit.author_email.to_string()),
+                    timestamp: timestamp.timestamp(),
+                },
+                ..GitCommit::default()
+            };
+
+            git_commit.into_conventional().is_ok()
+        })
         .map(|commit| {
             let timestamp = chrono::DateTime::parse_from_rfc2822(&commit.author_date).unwrap();
 
@@ -154,26 +170,28 @@ fn define_config(
                         replace: Some(String::from(github_url)),
                         replace_command: None,
                     }]),
+                    render_always: Some(false),
+                    ..ChangelogConfig::default()
                 },
                 git: GitConfig {
                     commit_parsers: Some(vec![
                         CommitParser {
-                            message: Some(Regex::new("^feat").expect("failed to compile regex")),
+                            message: Regex::new("^feat").ok(),
                             group: Some(String::from("<!-- 0 -->⛰️  Features")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^fix").expect("failed to compile regex")),
+                            message: Regex::new("^fix").ok(),
                             group: Some(String::from("<!-- 1 -->🐛  Bug Fixes")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^doc").expect("failed to compile regex")),
+                            message: Regex::new("^doc").ok(),
                             group: Some(String::from("<!-- 3 -->📚 Documentation")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^perf").expect("failed to compile regex")),
+                            message: Regex::new("^perf").ok(),
                             group: Some(String::from("<!-- 4 -->⚡ Performance")),
                             ..CommitParser::default()
                         },
@@ -186,52 +204,43 @@ fn define_config(
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(
-                                Regex::new("^refactor").expect("failed to compile regex"),
-                            ),
+                            message: Regex::new("^refactor").ok(),
                             group: Some(String::from("<!-- 2 -->🚜 Refactor")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^style").expect("failed to compile regex")),
+                            message: Regex::new("^style").ok(),
                             group: Some(String::from("<!-- 5 -->🎨 Styling")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^test").expect("failed to compile regex")),
+                            message: Regex::new("^test").ok(),
                             group: Some(String::from("<!-- 6 -->🧪 Testing")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(
-                                Regex::new("^chore|^ci").expect("failed to compile regex"),
-                            ),
+                            message: Regex::new("^chore|^ci").ok(),
                             group: Some(String::from("<!-- 7 -->⚙️ Miscellaneous Tasks")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            body: Some(Regex::new(".*security").expect("failed to compile regex")),
+                            body: Regex::new(".*security").ok(),
                             group: Some(String::from("<!-- 8 -->🛡️ Security")),
                             ..CommitParser::default()
                         },
                         CommitParser {
-                            message: Some(Regex::new("^revert").expect("failed to compile regex")),
+                            message: Regex::new("^revert").ok(),
                             group: Some(String::from("<!-- 9 -->◀️ Revert")),
                             ..CommitParser::default()
                         },
                     ]),
                     protect_breaking_commits: Some(false),
                     filter_commits: Some(false),
-                    tag_pattern: Some(
-                        Regex::new("^((?:@[^/@]+/)?[^/@]+)(?:@([^/]+))?$")
-                            .expect("failed to compile regex"),
-                    ),
-                    skip_tags: Some(
-                        Regex::new("beta|alpha|snapshot").expect("failed to compile regex"),
-                    ),
-                    ignore_tags: Some(
-                        Regex::new("rc|beta|alpha|snapshot").expect("failed to compile regex"),
-                    ),
+                    filter_unconventional: Some(true),
+                    conventional_commits: Some(true),
+                    tag_pattern: Regex::new("^((?:@[^/@]+/)?[^/@]+)(?:@([^/]+))?$").ok(),
+                    skip_tags: Regex::new("beta|alpha|snapshot").ok(),
+                    ignore_tags: Regex::new("rc|beta|alpha|snapshot").ok(),
                     topo_order: Some(false),
                     sort_commits: Some(String::from("newest")),
                     ..GitConfig::default()

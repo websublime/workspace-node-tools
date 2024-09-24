@@ -1,12 +1,12 @@
 #[cfg(test)]
-use git2::{Commit, Repository, RepositoryInitOptions};
+use git2::{Repository, RepositoryInitOptions};
 
 #[cfg(test)]
 use std::{
     env::temp_dir,
     fs::{remove_dir_all, OpenOptions},
     io::BufWriter,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// Strips the trailing newline from a string.
@@ -35,9 +35,19 @@ impl MonorepoWorkspace {
 
         let repository = Repository::init_opts(&self.root, &opts)?;
 
-        let mut config = repository.config()?;
-        config.set_str("user.name", "Sublime Machine")?;
-        config.set_str("user.email", "machine@websublime.dev")?;
+        {
+            let mut config = repository.config()?;
+            config.set_str("user.name", "Sublime Machine")?;
+            config.set_str("user.email", "machine@websublime.dev")?;
+
+            let mut index = repository.index()?;
+            let id = index.write_tree()?;
+
+            let tree = repository.find_tree(id)?;
+            let sig = repository.signature()?;
+
+            repository.commit(Some("HEAD"), &sig, &sig, "initiate monorepo project", &tree, &[])?;
+        }
 
         Ok(repository)
     }
@@ -48,9 +58,12 @@ impl MonorepoWorkspace {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let object_id = repo.head()?.target().unwrap();
         let target = repo.find_commit(object_id)?;
+        let signature = repo.signature()?;
 
         repo.branch("feature/init", &target, true)?;
-        let index_file = repo.index()?;
+
+        let mut index_file = repo.index()?;
+        repo.checkout_index(Some(&mut index_file), None)?;
 
         let monorepo_root_json = r#"
       {
@@ -59,8 +72,8 @@ impl MonorepoWorkspace {
               "packages/package-foo",
               "packages/package-bar",
               "packages/package-baz",
-              "packages/package-charlie"
-              "packages/package-major"
+              "packages/package-charlie",
+              "packages/package-major",
               "packages/package-tom"
           ]
       }"#;
@@ -71,6 +84,21 @@ impl MonorepoWorkspace {
             OpenOptions::new().write(true).create(true).open(monorepo_package_json)?;
         let writer = BufWriter::new(root_package_json);
         serde_json::to_writer_pretty(writer, &package_root_json)?;
+
+        index_file.add_path(Path::new("package.json"))?;
+        let tree_object_id = index_file.write_tree()?;
+        let tree = repo.find_tree(tree_object_id)?;
+        let commit_object_id = repo.commit(
+            Some("refs/heads/feature/init"),
+            &signature,
+            &signature,
+            "feat(WS-0101): init monorepo root package.json",
+            &tree,
+            &[&target],
+        )?;
+        let annotated_commit = repo.find_annotated_commit(commit_object_id)?;
+
+        repo.merge(&[&annotated_commit], None, None)?;
 
         Ok(())
     }
@@ -90,12 +118,13 @@ mod tests {
 
     #[test]
     fn git_root_project() -> Result<(), Box<dyn std::error::Error>> {
-        let ref repo = MonorepoWorkspace::new();
+        let ref monorepo = MonorepoWorkspace::new();
 
-        dbg!(repo);
+        dbg!(monorepo);
 
-        repo.create_repository()?;
-        repo.delete_repository();
+        let ref repo = monorepo.create_repository()?;
+        monorepo.create_monorepo_package_json(repo)?;
+        //monorepo.delete_repository();
 
         Ok(())
     }

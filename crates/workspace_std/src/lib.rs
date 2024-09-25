@@ -11,6 +11,7 @@
 //! - Filesystem utilities
 //! - Node package manager detection
 //! - Test utilities
+pub mod config;
 pub mod errors;
 pub mod git;
 pub mod manager;

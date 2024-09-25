@@ -8,11 +8,12 @@ use crate::types::GitResult;
 use crate::utils::strip_trailing_newline;
 
 use regex::Regex;
-use std::ffi::OsStr;
-use std::io::Write;
 use std::{
+    collections::HashMap,
     env::temp_dir,
+    ffi::OsStr,
     fs::{remove_file, File},
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Output},
     str,
@@ -447,6 +448,16 @@ impl RepositoryCommit {
     pub fn set_hash(&mut self, hash: &String) {
         self.hash = hash.to_string();
     }
+
+    pub fn get_hash_map(&self) -> HashMap<String, String> {
+        HashMap::from([
+            ("hash".to_string(), self.hash.to_string()),
+            ("author_name".to_string(), self.author_name.to_string()),
+            ("author_email".to_string(), self.author_email.to_string()),
+            ("author_date".to_string(), self.author_date.to_string()),
+            ("message".to_string(), self.message.to_string()),
+        ])
+    }
 }
 
 impl RepositoryRemoteTags {
@@ -469,9 +480,16 @@ impl RepositoryRemoteTags {
     pub fn set_tag(&mut self, tag: &String) {
         self.tag = tag.to_string();
     }
+
+    pub fn get_hash_map(&self) -> HashMap<String, String> {
+        HashMap::from([
+            ("hash".to_string(), self.hash.to_string()),
+            ("tag".to_string(), self.tag.to_string()),
+        ])
+    }
 }
 
-fn execute_git<P, I, F, S, R>(path: P, args: I, process: F) -> GitResult<R>
+pub fn execute_git<P, I, F, S, R>(path: P, args: I, process: F) -> GitResult<R>
 where
     P: AsRef<Path>,
     I: IntoIterator<Item = S>,

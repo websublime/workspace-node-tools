@@ -14,6 +14,7 @@
 pub mod errors;
 pub mod git;
 pub mod manager;
+pub mod paths;
 pub mod test;
 pub mod types;
 pub mod utils;

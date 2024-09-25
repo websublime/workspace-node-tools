@@ -1,3 +1,8 @@
+//! This module provides a simple interface to interact with Git repositories.
+//! To use this module import it like this:
+//! ```rust
+//! use workspace_std::git::Repository;
+//! ```
 use crate::errors::GitError;
 use crate::types::GitResult;
 use crate::utils::strip_trailing_newline;
@@ -42,12 +47,41 @@ impl Repository {
         &self.location
     }
 
-    pub fn config(&self, username: &String, email: &String) -> GitResult<bool> {
-        execute_git(
+    pub fn init(
+        &self,
+        initial_branch: &String,
+        username: &String,
+        email: &String,
+    ) -> GitResult<bool> {
+        let init = execute_git(
             &self.location,
-            &["config", "user.name", username.as_str(), "user.email", email.as_str()],
+            &["init", "--initial-branch", initial_branch.as_str()],
             |_, output| Ok(output.status.success()),
-        )
+        );
+        let config = self.config(username, email);
+
+        Ok(init.is_ok() && config.is_ok())
+    }
+
+    pub fn is_vcs(&self) -> GitResult<bool> {
+        execute_git(&self.location, &["rev-parse", "--is-inside-work-tree"], |stdout, _| {
+            Ok(stdout.trim() == "true")
+        })
+    }
+
+    pub fn config(&self, username: &String, email: &String) -> GitResult<bool> {
+        let user_config = execute_git(
+            &self.location,
+            &["config", "user.name", username.as_str()],
+            |_, output| Ok(output.status.success()),
+        );
+
+        let email_config =
+            execute_git(&self.location, &["config", "user.email", email.as_str()], |_, output| {
+                Ok(output.status.success())
+            });
+
+        Ok(user_config.is_ok() && email_config.is_ok())
     }
 
     pub fn add_all(&self) -> GitResult<bool> {
@@ -248,17 +282,21 @@ impl Repository {
             DELIMITER, DELIMITER, DELIMITER, DELIMITER, DELIMITER, BREAK_LINE
         );
 
-        let mut args = vec!["--no-pager", "log", log_format.as_str(), "--date=rfc2822"];
+        let mut args = vec![
+            "--no-pager".to_string(),
+            "log".to_string(),
+            log_format,
+            "--date=rfc2822".to_string(),
+        ];
 
-        /*if since.is_some() {
-            let log_since = "{}..".to_owned() + since.unwrap().as_str();
-            args.push(log_since.as_str());
+        if let Some(since) = since {
+            args.push(format!("{}..", since));
         }
 
-        if relative.is_some() {
-            args.push("--");
-            args.push(relative.unwrap().as_str());
-        }*/
+        if let Some(relative) = relative {
+            args.push("--".to_string());
+            args.push(relative);
+        }
 
         execute_git(&self.location, &args, |stdout, output| {
             if !output.status.success() {
@@ -359,6 +397,80 @@ impl Repository {
     }
 }
 
+impl RepositoryCommit {
+    pub fn new(
+        hash: String,
+        author_name: String,
+        author_email: String,
+        author_date: String,
+        message: String,
+    ) -> Self {
+        Self { hash, author_name, author_email, author_date, message }
+    }
+
+    pub fn get_message(&self) -> &String {
+        &self.message
+    }
+
+    pub fn set_message(&mut self, message: &String) {
+        self.message = message.to_string();
+    }
+
+    pub fn get_author_name(&self) -> &String {
+        &self.author_name
+    }
+
+    pub fn set_author_name(&mut self, author_name: &String) {
+        self.author_name = author_name.to_string();
+    }
+
+    pub fn get_author_email(&self) -> &String {
+        &self.author_email
+    }
+
+    pub fn set_author_email(&mut self, author_email: &String) {
+        self.author_email = author_email.to_string();
+    }
+
+    pub fn get_author_date(&self) -> &String {
+        &self.author_date
+    }
+
+    pub fn set_author_date(&mut self, author_date: &String) {
+        self.author_date = author_date.to_string();
+    }
+
+    pub fn get_hash(&self) -> &String {
+        &self.hash
+    }
+
+    pub fn set_hash(&mut self, hash: &String) {
+        self.hash = hash.to_string();
+    }
+}
+
+impl RepositoryRemoteTags {
+    pub fn new(hash: String, tag: String) -> Self {
+        Self { hash, tag }
+    }
+
+    pub fn get_hash(&self) -> &String {
+        &self.hash
+    }
+
+    pub fn set_hash(&mut self, hash: &String) {
+        self.hash = hash.to_string();
+    }
+
+    pub fn get_tag(&self) -> &String {
+        &self.tag
+    }
+
+    pub fn set_tag(&mut self, tag: &String) {
+        self.tag = tag.to_string();
+    }
+}
+
 fn execute_git<P, I, F, S, R>(path: P, args: I, process: F) -> GitResult<R>
 where
     P: AsRef<Path>,
@@ -395,20 +507,36 @@ mod tests {
     use std::fs::{create_dir, remove_dir_all};
     #[cfg(not(windows))]
     use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
 
-    #[test]
-    fn test_repo() -> Result<(), std::io::Error> {
+    fn create_monorepo() -> Result<PathBuf, std::io::Error> {
         let temp_dir = temp_dir();
         let monorepo_root_dir = temp_dir.join("monorepo-workspace");
+
+        if monorepo_root_dir.exists() {
+            remove_dir_all(&monorepo_root_dir)?;
+        }
 
         create_dir(&monorepo_root_dir)?;
 
         #[cfg(not(windows))]
         std::fs::set_permissions(&monorepo_root_dir, std::fs::Permissions::from_mode(0o777))?;
 
-        let repo = Repository::new(monorepo_root_dir.as_path());
+        Ok(monorepo_root_dir)
+    }
 
-        dbg!(repo);
+    #[test]
+    fn test_create_repo() -> Result<(), std::io::Error> {
+        let monorepo_root_dir = create_monorepo()?;
+        let repo = Repository::new(&monorepo_root_dir);
+        let result = repo.init(
+            &"main".to_string(),
+            &"Websublime Machine".to_string(),
+            &"machine@websublime.com".to_string(),
+        );
+
+        assert_eq!(result.is_ok_and(|ok| ok), true);
+        assert_eq!(repo.is_vcs().expect("Repo is not a vcs system"), true);
 
         remove_dir_all(&monorepo_root_dir)?;
 

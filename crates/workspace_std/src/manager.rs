@@ -19,7 +19,7 @@ impl From<String> for CorePackageManager {
             "yarn" => Self::Yarn,
             "pnpm" => Self::Pnpm,
             "bun" => Self::Bun,
-            _ => Self::Npm,
+            _ => panic!("Unable to identify package manager: {manager}"),
         }
     }
 }

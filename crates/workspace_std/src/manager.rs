@@ -1,0 +1,61 @@
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter, Result},
+    path::PathBuf,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CorePackageManager {
+    Npm,
+    Yarn,
+    Pnpm,
+    Bun,
+}
+
+impl From<String> for CorePackageManager {
+    fn from(manager: String) -> Self {
+        match manager.as_str() {
+            "npm" => Self::Npm,
+            "yarn" => Self::Yarn,
+            "pnpm" => Self::Pnpm,
+            "bun" => Self::Bun,
+            _ => Self::Npm,
+        }
+    }
+}
+
+impl Display for CorePackageManager {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self {
+            Self::Npm => write!(f, "npm"),
+            Self::Yarn => write!(f, "yarn"),
+            Self::Pnpm => write!(f, "pnpm"),
+            Self::Bun => write!(f, "bun"),
+        }
+    }
+}
+
+/// Detects which package manager is available in the workspace.
+pub fn detect_package_manager(path: &PathBuf) -> Option<CorePackageManager> {
+    let package_manager_files = HashMap::from([
+        ("package-lock.json", CorePackageManager::Npm),
+        ("npm-shrinkwrap.json", CorePackageManager::Npm),
+        ("yarn.lock", CorePackageManager::Yarn),
+        ("pnpm-lock.yaml", CorePackageManager::Pnpm),
+        ("bun.lockb", CorePackageManager::Bun),
+    ]);
+
+    for (file, package_manager) in package_manager_files.iter() {
+        let lock_file = path.join(file);
+
+        if lock_file.exists() {
+            return Some(*package_manager);
+        }
+    }
+
+    if let Some(parent) = path.parent() {
+        return detect_package_manager(&parent.to_path_buf());
+    }
+
+    None
+}

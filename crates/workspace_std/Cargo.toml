@@ -23,3 +23,6 @@ workspace = true
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
+toml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+git-cliff-core = "2.6.0"

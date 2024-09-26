@@ -85,6 +85,24 @@ impl Repository {
         Ok(user_config.is_ok() && email_config.is_ok())
     }
 
+    pub fn create_branch(&self, branch_name: &String) -> GitResult<bool> {
+        execute_git(&self.location, &["checkout", "-b", branch_name.as_str()], |_, output| {
+            Ok(output.status.success())
+        })
+    }
+
+    pub fn checkout(&self, branch_name: &String) -> GitResult<bool> {
+        execute_git(&self.location, &["checkout", branch_name.as_str()], |_, output| {
+            Ok(output.status.success())
+        })
+    }
+
+    pub fn merge(&self, branch_name: &String) -> GitResult<bool> {
+        execute_git(&self.location, &["merge", branch_name.as_str()], |_, output| {
+            Ok(output.status.success())
+        })
+    }
+
     pub fn add_all(&self) -> GitResult<bool> {
         execute_git(&self.location, &["add", "."], |_, output| Ok(output.status.success()))
     }

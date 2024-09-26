@@ -2,13 +2,13 @@
 use crate::git::Repository;
 
 #[cfg(test)]
-use toml::Value;
+use crate::manager::CorePackageManager;
 
 #[cfg(test)]
 use std::{
     env::temp_dir,
     fs::{create_dir_all, remove_dir_all, File, OpenOptions},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 #[cfg(test)]
@@ -31,23 +31,30 @@ impl MonorepoWorkspace {
         let temp_dir = temp_dir();
         let ref monorepo_root_dir = temp_dir.join("monorepo-workspace");
 
+        if monorepo_root_dir.exists() {
+            remove_dir_all(monorepo_root_dir).expect("Unable to remove directory");
+        }
+
+        create_dir_all(monorepo_root_dir).expect("Unable to create monorepo directory");
+
+        let canonic_path =
+            &std::fs::canonicalize(Path::new(monorepo_root_dir.as_os_str())).unwrap();
+
         Self {
-            root: monorepo_root_dir.to_path_buf(),
-            repository: Repository::new(monorepo_root_dir.as_path()),
+            root: canonic_path.to_path_buf(),
+            repository: Repository::new(canonic_path.as_path()),
         }
     }
 
-    pub fn create_repository(&self) -> Result<(), std::io::Error> {
+    pub fn create_repository(
+        &self,
+        package_manager: &CorePackageManager,
+    ) -> Result<(), std::io::Error> {
         let monorepo_package_json = &self.root.join("package.json");
         let monorepo_changes_json = &self.root.join(".changes.json");
         let monorepo_config_toml = &self.root.join(".config.toml");
         let monorepo_packages_dir = &self.root.join("packages");
 
-        if self.root.exists() {
-            remove_dir_all(&self.root)?;
-        }
-
-        create_dir_all(&self.root)?;
         create_dir_all(&monorepo_packages_dir)?;
 
         #[cfg(not(windows))]
@@ -81,7 +88,7 @@ impl MonorepoWorkspace {
             "message": "chore(release): release new version",
             "git_user_name": "github-actions[bot]",
             "git_user_email": "github-actions[bot]@users.noreply.git.com",
-            "changes": []
+            "changes": {}
         }"#;
 
         let package_changes_json =
@@ -95,6 +102,9 @@ impl MonorepoWorkspace {
         serde_json::to_writer_pretty(monorepo_changes_json_writer, &package_changes_json)?;
 
         let monorepo_config_data = r#"
+[tools]
+bump_sync = true
+
 [cliff.changelog]
 # template for the changelog footer
 header = """
@@ -206,6 +216,37 @@ sort_commits = "newest"
             .create(true)
             .open(&monorepo_config_toml.as_path())?;
         monorepo_package_config_toml_file.write_all(monorepo_config_data.as_bytes())?;
+
+        match package_manager {
+            CorePackageManager::Yarn => {
+                let yarn_lock = &self.root.join("yarn.lock");
+                File::create(&yarn_lock)?;
+            }
+            CorePackageManager::Pnpm => {
+                let pnpm_lock = &self.root.join("pnpm-lock.yaml");
+                let pnpm_workspace = &self.root.join("pnpm-workspace.yaml");
+
+                let mut lock_file = File::create(&pnpm_lock)?;
+                lock_file.write_all(r#"lockfileVersion: '9.0'"#.as_bytes())?;
+
+                let mut workspace_file = File::create(&pnpm_workspace)?;
+                workspace_file.write_all(
+                    r#"
+                    packages:
+                      - "packages/*"
+                "#
+                    .as_bytes(),
+                )?;
+            }
+            CorePackageManager::Bun => {
+                let bun_lock = &self.root.join("bun.lockb");
+                File::create(&bun_lock)?;
+            }
+            CorePackageManager::Npm => {
+                let npm_lock = &self.root.join("package-lock.json");
+                File::create(&npm_lock)?;
+            }
+        }
 
         self.repository
             .init(

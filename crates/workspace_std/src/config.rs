@@ -2,14 +2,14 @@ use git_cliff_core::config::{
     Bump, ChangelogConfig, CommitParser, Config, GitConfig, RemoteConfig, TextProcessor,
 };
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use crate::changes::ChangesFileData;
 use crate::manager::{detect_package_manager, CorePackageManager};
 use crate::paths::get_project_root_path;
 
@@ -29,23 +29,6 @@ pub struct WorkspaceConfig {
     pub changes_config: HashMap<String, String>,
     pub cliff_config: Config,
     pub tools_config: ToolsConfig,
-}
-
-type ChangesData = BTreeMap<String, Vec<Change>>;
-
-#[derive(Deserialize, Serialize)]
-pub struct Change {
-    pub package: String,
-    pub release_as: String,
-    pub deploy: Vec<String>,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct ChangesFileData {
-    pub message: Option<String>,
-    pub git_user_name: Option<String>,
-    pub git_user_email: Option<String>,
-    pub changes: ChangesData,
 }
 
 fn get_changes_config(root: &PathBuf) -> HashMap<String, String> {

@@ -28,14 +28,33 @@ pub struct ChangesFileData {
     pub changes: ChangesData,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Changes {
-    changes: ChangesData,
+    pub changes: ChangesData,
     root: PathBuf,
 }
 
 impl From<WorkspaceConfig> for Changes {
     fn from(config: WorkspaceConfig) -> Self {
         Changes { root: config.workspace_root.to_path_buf(), changes: ChangesData::new() }
+    }
+}
+
+impl From<&WorkspaceConfig> for Changes {
+    fn from(config: &WorkspaceConfig) -> Self {
+        Changes { root: config.workspace_root.to_path_buf(), changes: ChangesData::new() }
+    }
+}
+
+impl From<&PathBuf> for Changes {
+    fn from(root: &PathBuf) -> Self {
+        Changes { root: root.to_path_buf(), changes: ChangesData::new() }
+    }
+}
+
+impl From<PathBuf> for Changes {
+    fn from(root: PathBuf) -> Self {
+        Changes { root, changes: ChangesData::new() }
     }
 }
 
@@ -49,10 +68,11 @@ impl Changes {
         let ref changes_path = root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
-            let changes_file = File::open(changes_path).unwrap();
+            let changes_file = File::open(changes_path).expect("Failed to open changes file");
             let changes_reader = BufReader::new(changes_file);
 
-            let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
+            let changes: ChangesFileData =
+                serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
             return changes;
         } else {
             let config = get_workspace_config(Some(self.root.to_path_buf()));
@@ -74,10 +94,11 @@ impl Changes {
                 changes: ChangesData::new(),
             };
 
-            let changes_file = File::create(changes_path).unwrap();
+            let changes_file = File::create(changes_path).expect("Failed to create changes file");
             let changes_writer = BufWriter::new(changes_file);
 
-            serde_json::to_writer_pretty(changes_writer, &changes).unwrap();
+            serde_json::to_writer_pretty(changes_writer, &changes)
+                .expect("Failed to write changes file");
 
             return changes;
         }
@@ -88,7 +109,7 @@ impl Changes {
         let ref changes_path = root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
-            let changes_file = File::open(changes_path).unwrap();
+            let changes_file = File::open(changes_path).expect("Failed to open changes file");
             let changes_reader = BufReader::new(changes_file);
 
             let mut changes: ChangesFileData =
@@ -103,7 +124,8 @@ impl Changes {
             };
 
             if changes.changes.contains_key(&branch) {
-                let branch_changes = changes.changes.get_mut(&branch).unwrap();
+                let branch_changes =
+                    changes.changes.get_mut(&branch).expect("Failed to get branch changes");
 
                 let pkg_already_added = branch_changes
                     .iter()
@@ -127,10 +149,11 @@ impl Changes {
                 );
             }
 
-            let changes_file = File::create(changes_path).unwrap();
+            let changes_file = File::create(changes_path).expect("Failed to create changes file");
             let changes_writer = BufWriter::new(changes_file);
 
-            serde_json::to_writer_pretty(changes_writer, &changes).unwrap();
+            serde_json::to_writer_pretty(changes_writer, &changes)
+                .expect("Failed to write changes file");
 
             return true;
         }
@@ -171,10 +194,11 @@ impl Changes {
         let ref changes_path = root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
-            let changes_file = File::open(changes_path).unwrap();
+            let changes_file = File::open(changes_path).expect("Failed to open changes file");
             let changes_reader = BufReader::new(changes_file);
 
-            let changes: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
+            let changes: ChangesFileData =
+                serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
             return changes.changes;
         }
@@ -221,7 +245,8 @@ impl Changes {
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
             if changes.changes.contains_key(&branch) {
-                let branch_changes = changes.changes.get(&branch).unwrap();
+                let branch_changes =
+                    changes.changes.get(&branch).expect("Failed to get branch changes");
 
                 let package_change =
                     branch_changes.iter().find(|change| change.package == package_name);
@@ -244,14 +269,15 @@ impl Changes {
         let ref changes_path = root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
-            let changes_file = File::open(changes_path).unwrap();
+            let changes_file = File::open(changes_path).expect("Failed to open changes file");
             let changes_reader = BufReader::new(changes_file);
 
             let changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
             if changes.changes.contains_key(&branch) {
-                let branch_changes = changes.changes.get(&branch).unwrap();
+                let branch_changes =
+                    changes.changes.get(&branch).expect("Failed to get branch changes");
 
                 let existing_packages_changes = branch_changes
                     .iter()

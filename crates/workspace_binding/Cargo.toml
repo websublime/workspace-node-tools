@@ -25,7 +25,11 @@ workspace_std = { workspace = true }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-napi = { version = "3.0.0-alpha", features = ["async", "anyhow"] }
+napi = { version = "3.0.0-alpha", features = [
+  "napi9",
+  "serde-json",
+  "tokio_rt",
+] }
 napi-build = { version = "2.1.3" }
 napi-derive = { version = "3.0.0-alpha", default-features = false, features = [
   "type-def",

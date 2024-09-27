@@ -42,15 +42,29 @@ fn get_changes_config(root: &PathBuf) -> HashMap<String, String> {
     let ref changes_path = root_path.join(String::from(".changes.json"));
 
     if changes_path.exists() {
-        let changes_file = File::open(changes_path).unwrap();
+        let changes_file = File::open(changes_path).expect("Failed to open changes file");
         let changes_reader = BufReader::new(changes_file);
 
-        let changes_config: ChangesFileData = serde_json::from_reader(changes_reader).unwrap();
+        let changes_config: ChangesFileData =
+            serde_json::from_reader(changes_reader).expect("Failed to parse changes file");
 
         HashMap::from([
-            ("message".to_string(), changes_config.message.unwrap()),
-            ("git_user_name".to_string(), changes_config.git_user_name.unwrap()),
-            ("git_user_email".to_string(), changes_config.git_user_email.unwrap()),
+            (
+                "message".to_string(),
+                changes_config.message.expect("Failed to get message from changes file"),
+            ),
+            (
+                "git_user_name".to_string(),
+                changes_config
+                    .git_user_name
+                    .expect("Failed to get git user name from changes file"),
+            ),
+            (
+                "git_user_email".to_string(),
+                changes_config
+                    .git_user_email
+                    .expect("Failed to get git user email from changes file"),
+            ),
         ])
     } else {
         default_changes_config
@@ -184,7 +198,7 @@ fn get_cliff_config(root: &PathBuf) -> Config {
     let ref config_path = root_path.join(String::from(".config.toml"));
 
     if config_path.exists() {
-        let config_file = File::open(config_path).unwrap();
+        let config_file = File::open(config_path).expect("Failed to open config file");
         let mut config_reader = BufReader::new(config_file);
         let mut buffer = String::new();
 
@@ -204,7 +218,7 @@ fn get_tools_config(root: &PathBuf) -> ToolsConfig {
     let ref tools_path = root_path.join(String::from(".config.toml"));
 
     if tools_path.exists() {
-        let config_file = File::open(tools_path).unwrap();
+        let config_file = File::open(tools_path).expect("Failed to open config file");
         let mut config_reader = BufReader::new(config_file);
         let mut buffer = String::new();
 
@@ -218,8 +232,10 @@ fn get_tools_config(root: &PathBuf) -> ToolsConfig {
 
 fn get_workspace_root(cwd: Option<PathBuf>) -> PathBuf {
     let ref root = match cwd {
-        Some(ref dir) => get_project_root_path(Some(PathBuf::from(dir))).unwrap(),
-        None => get_project_root_path(None).unwrap(),
+        Some(ref dir) => {
+            get_project_root_path(Some(PathBuf::from(dir))).expect("Failed to get project root")
+        }
+        None => get_project_root_path(None).expect("Failed to get project root"),
     };
     PathBuf::from(root)
 }

@@ -1,0 +1,105 @@
+{
+  "name": "@websublime/workspace-tools",
+  "version": "1.0.2",
+  "description": "Bindings for node from crate workspace-node-tools",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "browser": "browser.js",
+  "repository": {
+    "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
+    "type": "git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "napi-rs",
+    "NAPI",
+    "N-API",
+    "Rust",
+    "node-addon",
+    "node-addon-api"
+  ],
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "browser.js"
+  ],
+  "napi": {
+    "binaryName": "workspace-tools",
+    "packageName": "@websublime/workspace-tools",
+    "targets": [
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "i686-pc-windows-msvc",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-musl",
+      "aarch64-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf"
+    ]
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "bench": "node -r @swc-node/register benchmark/bench.ts",
+    "build": "napi build --platform --release --no-const-enum",
+    "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js index.js --dts index.d.ts --no-const-enum",
+    "build:debug": "napi build --platform",
+    "format": "run-p format:prettier format:rs format:toml",
+    "format:prettier": "prettier . -w",
+    "format:toml": "taplo format",
+    "format:rs": "cargo fmt",
+    "lint": "oxlint",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "ava",
+    "version": "napi version"
+  },
+  "devDependencies": {
+    "@emnapi/core": "^1.1.1",
+    "@emnapi/runtime": "^1.1.1",
+    "@napi-rs/cli": "^3.0.0-alpha.60",
+    "@napi-rs/wasm-runtime": "^0.2.4",
+    "@swc-node/register": "^1.9.0",
+    "@swc/core": "^1.4.13",
+    "@tybys/wasm-util": "^0.9.0",
+    "ava": "^6.1.2",
+    "benny": "^3.7.1",
+    "chalk": "^5.3.0",
+    "emnapi": "^1.2.0",
+    "vite": "^5.2.13",
+    "vitest": "^2.0.0",
+    "typescript": "^5.4.5"
+  },
+  "optionalDependencies": {
+    "@websublime/workspace-tools-darwin-arm64": "workspace:*",
+    "@websublime/workspace-tools-darwin-x64": "workspace:*",
+    "@websublime/workspace-tools-linux-arm-gnueabihf": "workspace:*",
+    "@websublime/workspace-tools-linux-arm64-gnu": "workspace:*",
+    "@websublime/workspace-tools-linux-arm64-musl": "workspace:*",
+    "@websublime/workspace-tools-linux-x64-gnu": "workspace:*",
+    "@websublime/workspace-tools-linux-x64-musl": "workspace:*",
+    "@websublime/workspace-tools-win32-arm64-msvc": "workspace:*",
+    "@websublime/workspace-tools-win32-ia32-msvc": "workspace:*",
+    "@websublime/workspace-tools-win32-x64-msvc": "workspace:*"
+  },
+  "ava": {
+    "require": [
+      "@swc-node/register"
+    ],
+    "extensions": [
+      "ts"
+    ],
+    "timeout": "2m",
+    "workerThreads": false,
+    "environmentVariables": {
+      "TS_NODE_PROJECT": "./tsconfig.json"
+    }
+  }
+}

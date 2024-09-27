@@ -1,0 +1,26 @@
+{
+  "include": ["src/**/*"],
+  "exclude": ["src/*.js", "src/*.mjs", "src/*.cjs"],
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "rootDir": "./src",
+    "moduleResolution": "Bundler",
+    "baseUrl": "./",
+    "paths": {
+      "@tests/*": ["tests/src/*"],
+      "@tests": ["tests/src/index.ts"]
+    },
+    "types": ["node", "vite/client"],
+    "allowJs": true,
+    "checkJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist/types",
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  }
+}

@@ -47,10 +47,11 @@
     "access": "public"
   },
   "scripts": {
-    "artifacts": "napi artifacts",
+    "artifacts": "napi artifacts --cwd ./src --package-json-path ../package.json -o=../artifacts --npm-dir ../npm",
     "bench": "node -r @swc-node/register benchmark/bench.ts",
-    "build": "napi build --platform --release --no-const-enum",
-    "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js index.js --dts index.d.ts --no-const-enum",
+    "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js index.js --dts binding.d.ts --no-const-enum",
+    "build-binding:release": "pnpm build-binding --release",
+    "build-types": "tsc -p ./tsconfig.dts.json",
     "build:debug": "napi build --platform",
     "format": "run-p format:prettier format:rs format:toml",
     "format:prettier": "prettier . -w",

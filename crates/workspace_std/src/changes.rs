@@ -36,19 +36,19 @@ pub struct Changes {
 
 impl From<WorkspaceConfig> for Changes {
     fn from(config: WorkspaceConfig) -> Self {
-        Changes { root: config.workspace_root.to_path_buf(), changes: ChangesData::new() }
+        Changes { root: config.workspace_root.clone(), changes: ChangesData::new() }
     }
 }
 
 impl From<&WorkspaceConfig> for Changes {
     fn from(config: &WorkspaceConfig) -> Self {
-        Changes { root: config.workspace_root.to_path_buf(), changes: ChangesData::new() }
+        Changes { root: config.workspace_root.clone(), changes: ChangesData::new() }
     }
 }
 
 impl From<&PathBuf> for Changes {
     fn from(root: &PathBuf) -> Self {
-        Changes { root: root.to_path_buf(), changes: ChangesData::new() }
+        Changes { root: root.clone(), changes: ChangesData::new() }
     }
 }
 
@@ -60,12 +60,12 @@ impl From<PathBuf> for Changes {
 
 impl Changes {
     pub fn new(root: &PathBuf) -> Self {
-        Changes { root: root.to_path_buf(), changes: ChangesData::new() }
+        Changes { root: root.clone(), changes: ChangesData::new() }
     }
 
     pub fn init(&self) -> ChangesFileData {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -74,39 +74,38 @@ impl Changes {
             let changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
             return changes;
-        } else {
-            let config = get_workspace_config(Some(self.root.to_path_buf()));
-            let message =
-                config.changes_config.get("message").expect("Failed to get message changes");
-            let git_user_name = config
-                .changes_config
-                .get("git_user_name")
-                .expect("Failed to get git_user_name changes");
-            let git_user_email = config
-                .changes_config
-                .get("git_user_email")
-                .expect("Failed to get git_user_email changes");
-
-            let changes = ChangesFileData {
-                message: Some(message.to_string()),
-                git_user_name: Some(git_user_name.to_string()),
-                git_user_email: Some(git_user_email.to_string()),
-                changes: ChangesData::new(),
-            };
-
-            let changes_file = File::create(changes_path).expect("Failed to create changes file");
-            let changes_writer = BufWriter::new(changes_file);
-
-            serde_json::to_writer_pretty(changes_writer, &changes)
-                .expect("Failed to write changes file");
-
-            return changes;
         }
+
+        let config = get_workspace_config(Some(self.root.clone()));
+        let message = config.changes_config.get("message").expect("Failed to get message changes");
+        let git_user_name = config
+            .changes_config
+            .get("git_user_name")
+            .expect("Failed to get git_user_name changes");
+        let git_user_email = config
+            .changes_config
+            .get("git_user_email")
+            .expect("Failed to get git_user_email changes");
+
+        let changes = ChangesFileData {
+            message: Some(message.to_string()),
+            git_user_name: Some(git_user_name.to_string()),
+            git_user_email: Some(git_user_email.to_string()),
+            changes: ChangesData::new(),
+        };
+
+        let changes_file = File::create(changes_path).expect("Failed to create changes file");
+        let changes_writer = BufWriter::new(changes_file);
+
+        serde_json::to_writer_pretty(changes_writer, &changes)
+            .expect("Failed to write changes file");
+
+        changes
     }
 
     pub fn add(&self, change: &Change) -> bool {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -225,9 +224,9 @@ impl Changes {
                 }
 
                 return branch_changes.unwrap().to_vec();
-            } else {
-                return vec![];
             }
+
+            return vec![];
         }
 
         vec![]

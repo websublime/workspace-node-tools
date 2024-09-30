@@ -293,8 +293,8 @@ impl Repository {
         since: Option<String>,
         relative: Option<String>,
     ) -> GitResult<Vec<RepositoryCommit>> {
-        const DELIMITER: &str = r#"#=#"#;
-        const BREAK_LINE: &str = r#"#+#"#;
+        const DELIMITER: &str = r"#=#";
+        const BREAK_LINE: &str = r"#+#";
 
         let log_format = format!(
             "--format={}%H{}%an{}%ae{}%ad{}%B{}",
@@ -370,9 +370,9 @@ impl Repository {
             }
 
             #[cfg(windows)]
-            const LINE_ENDING: &'static str = "\r\n";
+            const LINE_ENDING: &str = "\r\n";
             #[cfg(not(windows))]
-            const LINE_ENDING: &'static str = "\n";
+            const LINE_ENDING: &str = "\n";
 
             Ok(stdout
                 .trim()
@@ -523,16 +523,14 @@ where
             } else {
                 Err(GitError::Execution)
             }
-        } else {
-            if let Ok(message) = str::from_utf8(&output.stdout) {
-                if let Ok(err) = str::from_utf8(&output.stderr) {
-                    Err(GitError::GitError { stdout: message.to_string(), stderr: err.to_string() })
-                } else {
-                    Err(GitError::Execution)
-                }
+        } else if let Ok(message) = str::from_utf8(&output.stdout) {
+            if let Ok(err) = str::from_utf8(&output.stderr) {
+                Err(GitError::GitError { stdout: message.to_string(), stderr: err.to_string() })
             } else {
                 Err(GitError::Execution)
             }
+        } else {
+            Err(GitError::Execution)
         }
     })
 }

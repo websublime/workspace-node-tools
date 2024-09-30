@@ -227,7 +227,7 @@ sort_commits = "newest"
                 let pnpm_workspace = &self.root.join("pnpm-workspace.yaml");
 
                 let mut lock_file = File::create(&pnpm_lock)?;
-                lock_file.write_all(r#"lockfileVersion: '9.0'"#.as_bytes())?;
+                lock_file.write_all(r"lockfileVersion: '9.0'".as_bytes())?;
 
                 let mut workspace_file = File::create(&pnpm_workspace)?;
                 workspace_file.write_all(

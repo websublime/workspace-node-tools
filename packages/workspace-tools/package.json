@@ -98,18 +98,6 @@
     "vite": "^5.2.13",
     "vitest": "^2.0.0"
   },
-  "optionalDependencies": {
-    "@websublime/workspace-tools-darwin-arm64": "workspace:*",
-    "@websublime/workspace-tools-darwin-x64": "workspace:*",
-    "@websublime/workspace-tools-linux-arm-gnueabihf": "workspace:*",
-    "@websublime/workspace-tools-linux-arm64-gnu": "workspace:*",
-    "@websublime/workspace-tools-linux-arm64-musl": "workspace:*",
-    "@websublime/workspace-tools-linux-x64-gnu": "workspace:*",
-    "@websublime/workspace-tools-linux-x64-musl": "workspace:*",
-    "@websublime/workspace-tools-win32-arm64-msvc": "workspace:*",
-    "@websublime/workspace-tools-win32-ia32-msvc": "workspace:*",
-    "@websublime/workspace-tools-win32-x64-msvc": "workspace:*"
-  },
   "ava": {
     "require": [
       "@swc-node/register"
@@ -122,8 +110,5 @@
     "environmentVariables": {
       "TS_NODE_PROJECT": "./tsconfig.json"
     }
-  },
-  "dependencies": {
-    "@microsoft/api-extractor": "^7.47.9"
   }
 }

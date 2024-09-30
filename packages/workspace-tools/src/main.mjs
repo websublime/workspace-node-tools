@@ -1,4 +1,4 @@
-import { initChanges } from './index.js'
+import { initChanges } from './binding.js'
 import util from 'node:util'
 
 const log = (() => {

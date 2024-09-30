@@ -1,9 +1,17 @@
 {
-  "name": "@websublime/workspace-tools",
+  "name": "workspace-tools",
   "version": "1.0.2",
   "description": "Bindings for node from crate workspace-node-tools",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "browser": "browser.js",
   "repository": {
     "url": "git+ssh://git@github.com/websublime/workspace-node-binding-tools.git",
@@ -19,9 +27,8 @@
     "node-addon-api"
   ],
   "files": [
-    "index.d.ts",
-    "index.js",
-    "browser.js"
+    "dist",
+    "!dist/*.node"
   ],
   "napi": {
     "binaryName": "workspace-tools",
@@ -32,13 +39,20 @@
       "x86_64-unknown-linux-gnu",
       "x86_64-unknown-linux-musl",
       "i686-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf",
       "aarch64-unknown-linux-gnu",
       "aarch64-apple-darwin",
       "aarch64-unknown-linux-musl",
       "aarch64-pc-windows-msvc",
-      "armv7-unknown-linux-gnueabihf"
+      "wasm32-wasip1-threads"
     ],
-    "dtsHeader": "import type { Changes } from './changes';\n\n"
+    "wasm": {
+      "initialMemory": 16384,
+      "browser": {
+        "fs": true
+      }
+    },
+    "dtsHeader": "import type { Changes } from './types/changes';\n\n"
   },
   "engines": {
     "node": ">= 10"
@@ -50,10 +64,12 @@
   "scripts": {
     "artifacts": "napi artifacts --cwd ./src --package-json-path ../package.json -o=../artifacts --npm-dir ../npm",
     "bench": "node -r @swc-node/register benchmark/bench.ts",
-    "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js index.js --dts ./types/binding.d.ts --no-const-enum",
+    "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js binding.js --dts binding.d.ts --no-const-enum",
     "build-binding:release": "pnpm build-binding --release",
+    "build-binding:wasi": "pnpm build-binding --target wasm32-wasip1-threads",
     "build-types": "tsc -p ./tsconfig.dts.json && api-extractor run --local",
     "build:debug": "napi build --platform",
+    "build:node": "unbuild",
     "format": "run-p format:prettier format:rs format:toml",
     "format:prettier": "prettier . -w",
     "format:toml": "taplo format",
@@ -75,6 +91,9 @@
     "benny": "^3.7.1",
     "chalk": "^5.3.0",
     "emnapi": "^1.2.0",
+    "unbuild": "^2.0.0",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.0.0",
     "typescript": "^5.4.5",
     "vite": "^5.2.13",
     "vitest": "^2.0.0"

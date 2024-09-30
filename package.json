@@ -10,7 +10,8 @@
     "packages/*"
   ],
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "ci:build-release-binding": "pnpm --filter workspace-tools run build-binding:release"
   },
   "devDependencies": {
     "@types/node": "22.5.2",

@@ -1,5 +1,5 @@
 {
-  "name": "workspace-tools",
+  "name": "@websublime/workspace-tools",
   "version": "1.0.2",
   "description": "Bindings for node from crate workspace-node-tools",
   "main": "./dist/index.cjs",
@@ -66,7 +66,7 @@
     "build-binding": "napi build -o=./src --manifest-path ../../crates/workspace_binding/Cargo.toml --platform -p workspace_binding --js binding.js --dts binding.d.ts --no-const-enum",
     "build-binding:release": "pnpm build-binding --release",
     "build-binding:wasi": "pnpm build-binding --target wasm32-wasip1-threads",
-    "build-types": "tsc -p ./tsconfig.dts.json && api-extractor run --local",
+    "build-types": "tsc -p ./tsconfig.dts.json",
     "build:debug": "napi build --platform",
     "build:node": "unbuild",
     "format": "run-p format:prettier format:rs format:toml",

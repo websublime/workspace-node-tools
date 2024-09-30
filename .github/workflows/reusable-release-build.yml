@@ -124,7 +124,7 @@ jobs:
 
       - name: Build Node Packages
         # Binaries are built in the previous steps. Unlike in local development, we only need to build the node package itself.
-        run: pnpm --filter workspace-tools build:node
+        run: pnpm --filter @websublime/workspace-tools build:node
 
       #- name: Build Type Definitions
       #  run: pnpm --filter workspace-tool build-types

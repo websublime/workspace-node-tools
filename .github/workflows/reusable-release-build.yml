@@ -9,9 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            build: pnpm ci:build-release-binding --target x86_64-apple-darwin
+          #- os: macos-latest
+          #  target: x86_64-apple-darwin
+          #  build: pnpm ci:build-release-binding --target x86_64-apple-darwin
 
           #- os: macos-latest
           #  target: aarch64-apple-darwin
@@ -35,12 +35,12 @@ jobs:
           #    export CARGO_BUILD_TARGET=aarch64-pc-windows-msvc;
           #    pnpm ci:build-release-binding --target aarch64-pc-windows-msvc
 
-          #- os: ubuntu-latest
-          #  target: x86_64-unknown-linux-gnu
-          #  build: |
-          #    export CARGO_BUILD_TARGET=x86_64-unknown-linux-gnu;
-          #    export CC=clang;
-          #    pnpm ci:build-release-binding --target x86_64-unknown-linux-gnu --use-napi-cross
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: |
+              export CARGO_BUILD_TARGET=x86_64-unknown-linux-gnu;
+              export CC=clang;
+              pnpm ci:build-release-binding --target x86_64-unknown-linux-gnu --use-napi-cross
 
           #- os: ubuntu-latest
           #  target: x86_64-unknown-linux-musl
@@ -109,7 +109,7 @@ jobs:
           if-no-files-found: error
           name: bindings-${{ matrix.target }}
           path: |
-            packages/workspace-tools/src/workspace-tools-binding.*.node
+            packages/workspace-tools/src/workspace-tools.*.node
 
   build-node-packages:
     strategy:

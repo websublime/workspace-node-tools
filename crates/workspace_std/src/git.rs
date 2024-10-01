@@ -48,15 +48,10 @@ impl Repository {
         &self.location
     }
 
-    pub fn init(
-        &self,
-        initial_branch: &String,
-        username: &String,
-        email: &String,
-    ) -> GitResult<bool> {
+    pub fn init(&self, initial_branch: &str, username: &str, email: &str) -> GitResult<bool> {
         let init = execute_git(
             &self.location,
-            &["init", "--initial-branch", initial_branch.as_str()],
+            ["init", "--initial-branch", initial_branch],
             |_, output| Ok(output.status.success()),
         );
         let config = self.config(username, email);
@@ -65,53 +60,52 @@ impl Repository {
     }
 
     pub fn is_vcs(&self) -> GitResult<bool> {
-        execute_git(&self.location, &["rev-parse", "--is-inside-work-tree"], |stdout, _| {
+        execute_git(&self.location, ["rev-parse", "--is-inside-work-tree"], |stdout, _| {
             Ok(stdout.trim() == "true")
         })
     }
 
-    pub fn config(&self, username: &String, email: &String) -> GitResult<bool> {
-        let user_config = execute_git(
-            &self.location,
-            &["config", "user.name", username.as_str()],
-            |_, output| Ok(output.status.success()),
-        );
+    pub fn config(&self, username: &str, email: &str) -> GitResult<bool> {
+        let user_config =
+            execute_git(&self.location, ["config", "user.name", username], |_, output| {
+                Ok(output.status.success())
+            });
 
         let email_config =
-            execute_git(&self.location, &["config", "user.email", email.as_str()], |_, output| {
+            execute_git(&self.location, ["config", "user.email", email], |_, output| {
                 Ok(output.status.success())
             });
 
         Ok(user_config.is_ok() && email_config.is_ok())
     }
 
-    pub fn create_branch(&self, branch_name: &String) -> GitResult<bool> {
-        execute_git(&self.location, &["checkout", "-b", branch_name.as_str()], |_, output| {
+    pub fn create_branch(&self, branch_name: &str) -> GitResult<bool> {
+        execute_git(&self.location, ["checkout", "-b", branch_name], |_, output| {
             Ok(output.status.success())
         })
     }
 
-    pub fn checkout(&self, branch_name: &String) -> GitResult<bool> {
-        execute_git(&self.location, &["checkout", branch_name.as_str()], |_, output| {
+    pub fn checkout(&self, branch_name: &str) -> GitResult<bool> {
+        execute_git(&self.location, ["checkout", branch_name], |_, output| {
             Ok(output.status.success())
         })
     }
 
-    pub fn merge(&self, branch_name: &String) -> GitResult<bool> {
-        execute_git(&self.location, &["merge", branch_name.as_str()], |_, output| {
-            Ok(output.status.success())
-        })
+    pub fn merge(&self, branch_name: &str) -> GitResult<bool> {
+        execute_git(&self.location, ["merge", branch_name], |_, output| Ok(output.status.success()))
     }
 
     pub fn add_all(&self) -> GitResult<bool> {
-        execute_git(&self.location, &["add", "."], |_, output| Ok(output.status.success()))
+        execute_git(&self.location, ["add", "."], |_, output| Ok(output.status.success()))
     }
 
     pub fn add(&self, path: &Path) -> GitResult<bool> {
         if path.to_str().is_some() {
-            execute_git(&self.location, &["add", path.to_str().unwrap()], |_, output| {
-                Ok(output.status.success())
-            })
+            execute_git(
+                &self.location,
+                ["add", path.to_str().expect("Failed to convert path to str")],
+                |_, output| Ok(output.status.success()),
+            )
         } else {
             Ok(false)
         }
@@ -128,24 +122,23 @@ impl Repository {
         execute_git(&self.location, &args, |_, output| Ok(output.status.success()))
     }
 
-    pub fn get_diverged_commit(&self, sha: &String) -> GitResult<String> {
-        execute_git(&self.location, &["merge-base", sha.as_str(), "HEAD"], |stdout, _| {
-            Ok(stdout.to_string())
-        })
+    pub fn get_diverged_commit(&self, sha: &str) -> GitResult<String> {
+        execute_git(&self.location, ["merge-base", sha, "HEAD"], |stdout, _| Ok(stdout.to_string()))
     }
 
     pub fn get_current_sha(&self) -> GitResult<String> {
-        execute_git(&self.location, &["rev-parse", "--short", "HEAD"], |stdout, _| {
+        execute_git(&self.location, ["rev-parse", "--short", "HEAD"], |stdout, _| {
             Ok(stdout.to_string())
         })
     }
 
     pub fn get_previous_sha(&self) -> GitResult<String> {
-        execute_git(&self.location, &["rev-parse", "--short", "HEAD~1"], |stdout, _| {
+        execute_git(&self.location, ["rev-parse", "--short", "HEAD~1"], |stdout, _| {
             Ok(stdout.to_string())
         })
     }
 
+    #[allow(clippy::uninlined_format_args)]
     pub fn get_first_sha(&self, branch: Option<String>) -> GitResult<String> {
         let branch = match branch {
             Some(branch) => branch,
@@ -154,7 +147,7 @@ impl Repository {
 
         execute_git(
             &self.location,
-            &[
+            [
                 "",
                 format!("{}..HEAD", branch).as_str(),
                 "--online",
@@ -168,11 +161,11 @@ impl Repository {
     }
 
     pub fn is_workdir_unclean(&self) -> GitResult<bool> {
-        execute_git(&self.location, &["status", "--porcelain"], |stdout, _| Ok(!stdout.is_empty()))
+        execute_git(&self.location, ["status", "--porcelain"], |stdout, _| Ok(!stdout.is_empty()))
     }
 
     pub fn get_current_branch(&self) -> GitResult<Option<String>> {
-        execute_git(&self.location, &["rev-parse", "--abbrev-ref", "HEAD"], |stdout, _| {
+        execute_git(&self.location, ["rev-parse", "--abbrev-ref", "HEAD"], |stdout, _| {
             if stdout.is_empty() {
                 Ok(None)
             } else {
@@ -181,10 +174,10 @@ impl Repository {
         })
     }
 
-    pub fn get_branch_from_commit(&self, sha: &String) -> GitResult<Option<String>> {
+    pub fn get_branch_from_commit(&self, sha: &str) -> GitResult<Option<String>> {
         execute_git(
             &self.location,
-            &[
+            [
                 "--no-pager",
                 "branch",
                 "--no-color",
@@ -192,7 +185,7 @@ impl Repository {
                 "--format",
                 r#""%(refname:lstrip=2)""#,
                 "--contains",
-                sha.as_str(),
+                sha,
             ],
             |stdout, _| {
                 if stdout.is_empty() {
@@ -204,14 +197,12 @@ impl Repository {
         )
     }
 
-    pub fn tag(&self, tag: &String, message: Option<String>) -> GitResult<bool> {
+    pub fn tag(&self, tag: &str, message: Option<String>) -> GitResult<bool> {
         let msg = message.unwrap_or(tag.to_string());
 
-        execute_git(
-            &self.location,
-            &["tag", "-a", tag.as_str(), "-m", msg.as_str()],
-            |_, output| Ok(output.status.success()),
-        )
+        execute_git(&self.location, ["tag", "-a", tag, "-m", msg.as_str()], |_, output| {
+            Ok(output.status.success())
+        })
     }
 
     pub fn push(&self, follow_tags: Option<bool>) -> GitResult<bool> {
@@ -226,20 +217,20 @@ impl Repository {
 
     pub fn commit(
         &self,
-        message: &String,
+        message: &str,
         body: Option<String>,
         footer: Option<String>,
     ) -> GitResult<bool> {
         let mut msg = message.to_string();
 
-        if body.is_some() {
+        if let Some(body) = body {
             msg.push_str("\n\n");
-            msg.push_str(body.unwrap().as_str());
+            msg.push_str(body.as_str());
         }
 
-        if footer.is_some() {
+        if let Some(footer) = footer {
             msg.push_str("\n\n");
-            msg.push_str(footer.unwrap().as_str());
+            msg.push_str(footer.as_str());
         }
 
         let temp_dir = temp_dir();
@@ -252,7 +243,7 @@ impl Repository {
 
         execute_git(
             &self.location,
-            &[
+            [
                 "commit",
                 "-F",
                 file_path.to_str().expect("Failed to retrieve file_path"),
@@ -266,17 +257,17 @@ impl Repository {
         )
     }
 
-    pub fn get_all_files_changed_since_sha(&self, sha: &String) -> GitResult<Vec<String>> {
+    pub fn get_all_files_changed_since_sha(&self, sha: &str) -> GitResult<Vec<String>> {
         execute_git(
             &self.location,
-            &["--no-pager", "diff", "--name-only", sha.as_str(), "HEAD"],
+            ["--no-pager", "diff", "--name-only", sha, "HEAD"],
             |stdout, output| {
                 if !output.status.success() {
                     return Ok(vec![]);
                 }
 
                 Ok(stdout
-                    .split("\n")
+                    .split('\n')
                     .filter(|item| !item.trim().is_empty())
                     .map(|item| self.location.join(item))
                     .filter(|item| item.exists())
@@ -288,6 +279,7 @@ impl Repository {
         )
     }
 
+    #[allow(clippy::uninlined_format_args)]
     pub fn get_commits_since(
         &self,
         since: Option<String>,
@@ -330,17 +322,18 @@ impl Repository {
                     let items = item_trimmed.split(DELIMITER).collect::<Vec<&str>>();
 
                     RepositoryCommit {
-                        hash: items.get(1).unwrap().to_string(),
-                        author_name: items.get(2).unwrap().to_string(),
-                        author_email: items.get(3).unwrap().to_string(),
-                        author_date: items.get(4).unwrap().to_string(),
-                        message: items.get(5).unwrap().to_string(),
+                        hash: items[1].to_string(),
+                        author_name: items[2].to_string(),
+                        author_email: items[3].to_string(),
+                        author_date: items[4].to_string(),
+                        message: items[5].to_string(),
                     }
                 })
                 .collect::<Vec<RepositoryCommit>>())
         })
     }
 
+    #[allow(clippy::items_after_statements)]
     pub fn get_remote_or_local_tags(
         &self,
         local: Option<bool>,
@@ -352,12 +345,7 @@ impl Repository {
                 args.push("show-ref");
                 args.push("--tags");
             }
-            Some(false) => {
-                args.push("ls-remote");
-                args.push("--tags");
-                args.push("origin");
-            }
-            None => {
+            Some(false) | None => {
                 args.push("ls-remote");
                 args.push("--tags");
                 args.push("origin");
@@ -382,8 +370,8 @@ impl Repository {
                     let hash_tags = Regex::new(r"\s+").unwrap().split(tags).collect::<Vec<&str>>();
 
                     RepositoryRemoteTags {
-                        hash: hash_tags.get(0).unwrap().to_string(),
-                        tag: hash_tags.get(1).unwrap().to_string(),
+                        hash: hash_tags[0].to_string(),
+                        tag: hash_tags[1].to_string(),
                     }
                 })
                 .collect::<Vec<RepositoryRemoteTags>>())
@@ -392,14 +380,14 @@ impl Repository {
 
     pub fn get_all_files_changed_since_branch(
         &self,
-        packages_paths: &Vec<String>,
-        branch: &String,
+        packages_paths: &[String],
+        branch: &str,
     ) -> Vec<String> {
         let mut all_files = vec![];
 
         packages_paths.iter().for_each(|item| {
             let files = self
-                .get_all_files_changed_since_sha(&branch.to_string())
+                .get_all_files_changed_since_sha(branch)
                 .expect("Failed to retrieve files changed since branch");
 
             let pkg_files = files
@@ -408,7 +396,7 @@ impl Repository {
                 .collect::<Vec<&String>>();
 
             all_files.append(
-                &mut pkg_files.iter().map(|file| file.to_string()).collect::<Vec<String>>(),
+                &mut pkg_files.iter().map(|file| (*file).to_string()).collect::<Vec<String>>(),
             );
         });
 
@@ -563,14 +551,10 @@ mod tests {
     fn test_create_repo() -> Result<(), std::io::Error> {
         let monorepo_root_dir = create_monorepo()?;
         let repo = Repository::new(&monorepo_root_dir);
-        let result = repo.init(
-            &"main".to_string(),
-            &"Websublime Machine".to_string(),
-            &"machine@websublime.com".to_string(),
-        );
+        let result = repo.init("main", "Websublime Machine", "machine@websublime.com");
 
-        assert_eq!(result.is_ok_and(|ok| ok), true);
-        assert_eq!(repo.is_vcs().expect("Repo is not a vcs system"), true);
+        assert!(result.is_ok_and(|ok| ok));
+        assert!(repo.is_vcs().expect("Repo is not a vcs system"));
 
         remove_dir_all(&monorepo_root_dir)?;
 

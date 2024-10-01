@@ -29,7 +29,7 @@ pub struct MonorepoWorkspace {
 impl MonorepoWorkspace {
     pub fn new() -> Self {
         let temp_dir = temp_dir();
-        let ref monorepo_root_dir = temp_dir.join("monorepo-workspace");
+        let monorepo_root_dir = &temp_dir.join("monorepo-workspace");
 
         if monorepo_root_dir.exists() {
             remove_dir_all(monorepo_root_dir).expect("Unable to remove directory");
@@ -40,12 +40,10 @@ impl MonorepoWorkspace {
         let canonic_path =
             &std::fs::canonicalize(Path::new(monorepo_root_dir.as_os_str())).unwrap();
 
-        Self {
-            root: canonic_path.to_path_buf(),
-            repository: Repository::new(canonic_path.as_path()),
-        }
+        Self { root: canonic_path.clone(), repository: Repository::new(canonic_path.as_path()) }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn create_repository(
         &self,
         package_manager: &CorePackageManager,
@@ -55,7 +53,7 @@ impl MonorepoWorkspace {
         let monorepo_config_toml = &self.root.join(".config.toml");
         let monorepo_packages_dir = &self.root.join("packages");
 
-        create_dir_all(&monorepo_packages_dir)?;
+        create_dir_all(monorepo_packages_dir)?;
 
         #[cfg(not(windows))]
         std::fs::set_permissions(&self.root, std::fs::Permissions::from_mode(0o777))?;
@@ -78,8 +76,9 @@ impl MonorepoWorkspace {
         let monorepo_package_root_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_json.as_path())?;
+            .open(monorepo_package_json.as_path())?;
         let monorepo_root_json_writer = BufWriter::new(monorepo_package_root_json_file);
         serde_json::to_writer_pretty(monorepo_root_json_writer, &package_root_json)?;
 
@@ -96,8 +95,9 @@ impl MonorepoWorkspace {
         let monorepo_package_changes_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_changes_json.as_path())?;
+            .open(monorepo_changes_json.as_path())?;
         let monorepo_changes_json_writer = BufWriter::new(monorepo_package_changes_json_file);
         serde_json::to_writer_pretty(monorepo_changes_json_writer, &package_changes_json)?;
 
@@ -213,23 +213,24 @@ sort_commits = "newest"
         let mut monorepo_package_config_toml_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_config_toml.as_path())?;
+            .open(monorepo_config_toml.as_path())?;
         monorepo_package_config_toml_file.write_all(monorepo_config_data.as_bytes())?;
 
         match package_manager {
             CorePackageManager::Yarn => {
                 let yarn_lock = &self.root.join("yarn.lock");
-                File::create(&yarn_lock)?;
+                File::create(yarn_lock)?;
             }
             CorePackageManager::Pnpm => {
                 let pnpm_lock = &self.root.join("pnpm-lock.yaml");
                 let pnpm_workspace = &self.root.join("pnpm-workspace.yaml");
 
-                let mut lock_file = File::create(&pnpm_lock)?;
+                let mut lock_file = File::create(pnpm_lock)?;
                 lock_file.write_all(r"lockfileVersion: '9.0'".as_bytes())?;
 
-                let mut workspace_file = File::create(&pnpm_workspace)?;
+                let mut workspace_file = File::create(pnpm_workspace)?;
                 workspace_file.write_all(
                     r#"
                     packages:
@@ -240,24 +241,20 @@ sort_commits = "newest"
             }
             CorePackageManager::Bun => {
                 let bun_lock = &self.root.join("bun.lockb");
-                File::create(&bun_lock)?;
+                File::create(bun_lock)?;
             }
             CorePackageManager::Npm => {
                 let npm_lock = &self.root.join("package-lock.json");
-                File::create(&npm_lock)?;
+                File::create(npm_lock)?;
             }
         }
 
         self.repository
-            .init(
-                &"main".to_string(),
-                &"Websublime Machine".to_string(),
-                &"machine@websublime.com".to_string(),
-            )
+            .init("main", "Websublime Machine", "machine@websublime.com")
             .expect("Failed to initialize git repository");
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"chore: init monorepo workspace".to_string(), None, None)
+            .commit("chore: init monorepo workspace", None, None)
             .expect("Failed to commit changes");
 
         Ok(())
@@ -265,14 +262,14 @@ sort_commits = "newest"
 
     pub fn create_package_foo(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-foo".to_string())
+            .create_branch("feature/package-foo")
             .expect("Failet to create branch feature/package-foo");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_foo_dir = &monorepo_packages_dir.join("package-foo");
         let js_path = &monorepo_package_foo_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_foo_dir)?;
+        create_dir_all(monorepo_package_foo_dir)?;
 
         let package_foo_json = r#"
       {
@@ -313,27 +310,23 @@ sort_commits = "newest"
         let monorepo_package_foo_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_foo_dir.join("package.json").as_path())?;
+            .open(monorepo_package_foo_dir.join("package.json").as_path())?;
         let monorepo_package_foo_json_writer = BufWriter::new(monorepo_package_foo_json_file);
         serde_json::to_writer_pretty(monorepo_package_foo_json_writer, &package_foo_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const foo = "hello foo";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package foo".to_string(), None, None)
+            .commit("feat: add package foo", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-foo").expect("Failed to merge branches");
         self.repository
-            .merge(&"feature/package-foo".to_string())
-            .expect("Failed to merge branches");
-        self.repository
-            .tag(
-                &"@scope/package-foo@1.0.0".to_string(),
-                Some("chore: release package-foo@1.0.0".to_string()),
-            )
+            .tag("@scope/package-foo@1.0.0", Some("chore: release package-foo@1.0.0".to_string()))
             .expect("Failed to create tag");
 
         Ok(())
@@ -341,14 +334,14 @@ sort_commits = "newest"
 
     pub fn create_package_bar(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-bar".to_string())
+            .create_branch("feature/package-bar")
             .expect("Failet to create branch feature/package-bar");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_bar_dir = &monorepo_packages_dir.join("package-bar");
         let js_path = &monorepo_package_bar_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_bar_dir)?;
+        create_dir_all(monorepo_package_bar_dir)?;
 
         let package_bar_json = r#"
       {
@@ -389,27 +382,23 @@ sort_commits = "newest"
         let monorepo_package_bar_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_bar_dir.join("package.json").as_path())?;
+            .open(monorepo_package_bar_dir.join("package.json").as_path())?;
         let monorepo_package_bar_json_writer = BufWriter::new(monorepo_package_bar_json_file);
         serde_json::to_writer_pretty(monorepo_package_bar_json_writer, &package_bar_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const bar = "hello bar";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package bar".to_string(), None, None)
+            .commit("feat: add package bar", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-bar").expect("Failed to merge branches");
         self.repository
-            .merge(&"feature/package-bar".to_string())
-            .expect("Failed to merge branches");
-        self.repository
-            .tag(
-                &"@scope/package-bar@1.0.0".to_string(),
-                Some("chore: release package-bar@1.0.0".to_string()),
-            )
+            .tag("@scope/package-bar@1.0.0", Some("chore: release package-bar@1.0.0".to_string()))
             .expect("Failed to create tag");
 
         Ok(())
@@ -417,14 +406,14 @@ sort_commits = "newest"
 
     pub fn create_package_baz(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-baz".to_string())
+            .create_branch("feature/package-baz")
             .expect("Failet to create branch feature/package-baz");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_baz_dir = &monorepo_packages_dir.join("package-baz");
         let js_path = &monorepo_package_baz_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_baz_dir)?;
+        create_dir_all(monorepo_package_baz_dir)?;
 
         let package_baz_json = r#"
       {
@@ -465,27 +454,23 @@ sort_commits = "newest"
         let monorepo_package_baz_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_baz_dir.join("package.json").as_path())?;
+            .open(monorepo_package_baz_dir.join("package.json").as_path())?;
         let monorepo_package_baz_json_writer = BufWriter::new(monorepo_package_baz_json_file);
         serde_json::to_writer_pretty(monorepo_package_baz_json_writer, &package_baz_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const baz = "hello baz";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package baz".to_string(), None, None)
+            .commit("feat: add package baz", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-baz").expect("Failed to merge branches");
         self.repository
-            .merge(&"feature/package-baz".to_string())
-            .expect("Failed to merge branches");
-        self.repository
-            .tag(
-                &"@scope/package-baz@1.0.0".to_string(),
-                Some("chore: release package-baz@1.0.0".to_string()),
-            )
+            .tag("@scope/package-baz@1.0.0", Some("chore: release package-baz@1.0.0".to_string()))
             .expect("Failed to create tag");
 
         Ok(())
@@ -493,14 +478,14 @@ sort_commits = "newest"
 
     pub fn create_package_charlie(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-charlie".to_string())
+            .create_branch("feature/package-charlie")
             .expect("Failet to create branch feature/package-charlie");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_charlie_dir = &monorepo_packages_dir.join("package-charlie");
         let js_path = &monorepo_package_charlie_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_charlie_dir)?;
+        create_dir_all(monorepo_package_charlie_dir)?;
 
         let package_charlie_json = r#"
       {
@@ -541,26 +526,25 @@ sort_commits = "newest"
         let monorepo_package_charlie_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_charlie_dir.join("package.json").as_path())?;
+            .open(monorepo_package_charlie_dir.join("package.json").as_path())?;
         let monorepo_package_charlie_json_writer =
             BufWriter::new(monorepo_package_charlie_json_file);
         serde_json::to_writer_pretty(monorepo_package_charlie_json_writer, &package_charlie_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const charlie = "hello charlie";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package charlie".to_string(), None, None)
+            .commit("feat: add package charlie", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
-        self.repository
-            .merge(&"feature/package-charlie".to_string())
-            .expect("Failed to merge branches");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-charlie").expect("Failed to merge branches");
         self.repository
             .tag(
-                &"@scope/package-charlie@1.0.0".to_string(),
+                "@scope/package-charlie@1.0.0",
                 Some("chore: release package-charlie@1.0.0".to_string()),
             )
             .expect("Failed to create tag");
@@ -570,14 +554,14 @@ sort_commits = "newest"
 
     pub fn create_package_major(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-major".to_string())
+            .create_branch("feature/package-major")
             .expect("Failet to create branch feature/package-major");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_major_dir = &monorepo_packages_dir.join("package-major");
         let js_path = &monorepo_package_major_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_major_dir)?;
+        create_dir_all(monorepo_package_major_dir)?;
 
         let package_major_json = r#"
       {
@@ -621,25 +605,24 @@ sort_commits = "newest"
         let monorepo_package_major_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_major_dir.join("package.json").as_path())?;
+            .open(monorepo_package_major_dir.join("package.json").as_path())?;
         let monorepo_package_major_json_writer = BufWriter::new(monorepo_package_major_json_file);
         serde_json::to_writer_pretty(monorepo_package_major_json_writer, &package_major_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const major = "hello major";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package major".to_string(), None, None)
+            .commit("feat: add package major", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
-        self.repository
-            .merge(&"feature/package-major".to_string())
-            .expect("Failed to merge branches");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-major").expect("Failed to merge branches");
         self.repository
             .tag(
-                &"@scope/package-major@1.0.0".to_string(),
+                "@scope/package-major@1.0.0",
                 Some("chore: release package-major@1.0.0".to_string()),
             )
             .expect("Failed to create tag");
@@ -649,14 +632,14 @@ sort_commits = "newest"
 
     pub fn create_package_tom(&self) -> Result<(), std::io::Error> {
         self.repository
-            .create_branch(&"feature/package-tom".to_string())
+            .create_branch("feature/package-tom")
             .expect("Failet to create branch feature/package-tom");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_tom_dir = &monorepo_packages_dir.join("package-tom");
         let js_path = &monorepo_package_tom_dir.join("index.mjs");
 
-        create_dir_all(&monorepo_package_tom_dir)?;
+        create_dir_all(monorepo_package_tom_dir)?;
 
         let package_tom_json = r#"
       {
@@ -709,27 +692,23 @@ sort_commits = "newest"
         let monorepo_package_tom_json_file = OpenOptions::new()
             .write(true)
             .append(false)
+            .truncate(true)
             .create(true)
-            .open(&monorepo_package_tom_dir.join("package.json").as_path())?;
+            .open(monorepo_package_tom_dir.join("package.json").as_path())?;
         let monorepo_package_tom_json_writer = BufWriter::new(monorepo_package_tom_json_file);
         serde_json::to_writer_pretty(monorepo_package_tom_json_writer, &package_tom_json)?;
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = File::create(js_path)?;
         js_file.write_all(r#"export const tom = "hello tom";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
-            .commit(&"feat: add package tom".to_string(), None, None)
+            .commit("feat: add package tom", None, None)
             .expect("Failed to commit changes");
-        self.repository.checkout(&"main".to_string()).expect("Failed to checkout main branch");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/package-tom").expect("Failed to merge branches");
         self.repository
-            .merge(&"feature/package-tom".to_string())
-            .expect("Failed to merge branches");
-        self.repository
-            .tag(
-                &"@scope/package-tom@1.0.0".to_string(),
-                Some("chore: release package-tom@1.0.0".to_string()),
-            )
+            .tag("@scope/package-tom@1.0.0", Some("chore: release package-tom@1.0.0".to_string()))
             .expect("Failed to create tag");
 
         Ok(())

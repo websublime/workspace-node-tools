@@ -59,8 +59,8 @@ impl From<PathBuf> for Changes {
 }
 
 impl Changes {
-    pub fn new(root: &PathBuf) -> Self {
-        Changes { root: root.clone(), changes: ChangesData::new() }
+    pub fn new(root: &Path) -> Self {
+        Changes { root: root.to_path_buf(), changes: ChangesData::new() }
     }
 
     pub fn init(&self) -> ChangesFileData {
@@ -122,7 +122,15 @@ impl Changes {
                 None => String::from("main"),
             };
 
-            if changes.changes.contains_key(&branch) {
+            if let std::collections::btree_map::Entry::Vacant(e) =
+                changes.changes.entry(branch.to_string())
+            {
+                e.insert(vec![Change {
+                    package: change.package.to_string(),
+                    release_as: change.release_as.to_string(),
+                    deploy: change.deploy.clone(),
+                }]);
+            } else {
                 let branch_changes =
                     changes.changes.get_mut(&branch).expect("Failed to get branch changes");
 
@@ -131,21 +139,13 @@ impl Changes {
                     .any(|branch_change| branch_change.package.as_str() == change.package.as_str());
 
                 if !pkg_already_added {
+                    let deploy = &change.deploy;
                     branch_changes.push(Change {
                         package: change.package.to_string(),
                         release_as: change.release_as.to_string(),
-                        deploy: change.deploy.to_vec(),
+                        deploy: deploy.clone(),
                     });
                 }
-            } else {
-                changes.changes.insert(
-                    branch,
-                    vec![Change {
-                        package: change.package.to_string(),
-                        release_as: change.release_as.to_string(),
-                        deploy: change.deploy.to_vec(),
-                    }],
-                );
             }
 
             let changes_file = File::create(changes_path).expect("Failed to create changes file");
@@ -160,9 +160,9 @@ impl Changes {
         false
     }
 
-    pub fn remove(&self, branch_name: String) -> bool {
+    pub fn remove(&self, branch_name: &str) -> bool {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -171,8 +171,8 @@ impl Changes {
             let mut changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
-            if changes.changes.contains_key(&branch_name) {
-                changes.changes.remove(&branch_name);
+            if changes.changes.contains_key(branch_name) {
+                changes.changes.remove(branch_name);
 
                 let changes_file =
                     File::create(changes_path).expect("Failed to create changes file");
@@ -190,7 +190,7 @@ impl Changes {
 
     pub fn changes(&self) -> ChangesData {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -202,12 +202,12 @@ impl Changes {
             return changes.changes;
         }
 
-        return ChangesData::new();
+        ChangesData::new()
     }
 
-    pub fn change_by_branch(&self, branch: String) -> Vec<Change> {
+    pub fn change_by_branch(&self, branch: &str) -> Vec<Change> {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -216,14 +216,14 @@ impl Changes {
             let changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
-            if changes.changes.contains_key(&branch) {
-                let branch_changes = changes.changes.get(&branch);
+            if changes.changes.contains_key(branch) {
+                let branch_changes = changes.changes.get(branch);
 
                 if branch_changes.is_none() {
                     return vec![];
                 }
 
-                return branch_changes.unwrap().to_vec();
+                return branch_changes.unwrap().clone();
             }
 
             return vec![];
@@ -232,9 +232,9 @@ impl Changes {
         vec![]
     }
 
-    pub fn change_by_package(&self, package_name: String, branch: String) -> Option<Change> {
+    pub fn change_by_package(&self, package_name: &str, branch: &str) -> Option<Change> {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -243,9 +243,9 @@ impl Changes {
             let changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
-            if changes.changes.contains_key(&branch) {
+            if changes.changes.contains_key(branch) {
                 let branch_changes =
-                    changes.changes.get(&branch).expect("Failed to get branch changes");
+                    changes.changes.get(branch).expect("Failed to get branch changes");
 
                 let package_change =
                     branch_changes.iter().find(|change| change.package == package_name);
@@ -263,9 +263,9 @@ impl Changes {
         None
     }
 
-    pub fn exist(&self, branch: String, packages_name: Vec<String>) -> bool {
+    pub fn exist(&self, branch: &str, packages_name: &[String]) -> bool {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         if changes_path.exists() {
             let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -274,9 +274,9 @@ impl Changes {
             let changes: ChangesFileData =
                 serde_json::from_reader(changes_reader).expect("Failed to parse changes json file");
 
-            if changes.changes.contains_key(&branch) {
+            if changes.changes.contains_key(branch) {
                 let branch_changes =
-                    changes.changes.get(&branch).expect("Failed to get branch changes");
+                    changes.changes.get(branch).expect("Failed to get branch changes");
 
                 let existing_packages_changes = branch_changes
                     .iter()
@@ -286,7 +286,7 @@ impl Changes {
                 let package_names_diff = packages_name
                     .iter()
                     .filter_map(|p| {
-                        if existing_packages_changes.contains(&p) {
+                        if existing_packages_changes.contains(p) {
                             None
                         } else {
                             Some(p.to_string())
@@ -306,7 +306,7 @@ impl Changes {
 
     pub fn file_exist(&self) -> bool {
         let root_path = Path::new(self.root.as_os_str());
-        let ref changes_path = root_path.join(String::from(".changes.json"));
+        let changes_path = &root_path.join(String::from(".changes.json"));
 
         changes_path.exists()
     }

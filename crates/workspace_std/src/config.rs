@@ -39,7 +39,7 @@ fn get_changes_config(root: &PathBuf) -> HashMap<String, String> {
     ]);
 
     let root_path = Path::new(root);
-    let ref changes_path = root_path.join(String::from(".changes.json"));
+    let changes_path = &root_path.join(String::from(".changes.json"));
 
     if changes_path.exists() {
         let changes_file = File::open(changes_path).expect("Failed to open changes file");
@@ -70,6 +70,8 @@ fn get_changes_config(root: &PathBuf) -> HashMap<String, String> {
         default_changes_config
     }
 }
+
+#[allow(clippy::too_many_lines)]
 
 fn get_cliff_config(root: &PathBuf) -> Config {
     let default_cliff_config = Config {
@@ -195,7 +197,7 @@ fn get_cliff_config(root: &PathBuf) -> Config {
     };
 
     let root_path = Path::new(root);
-    let ref config_path = root_path.join(String::from(".config.toml"));
+    let config_path = &root_path.join(String::from(".config.toml"));
 
     if config_path.exists() {
         let config_file = File::open(config_path).expect("Failed to open config file");
@@ -215,7 +217,7 @@ fn get_tools_config(root: &PathBuf) -> ToolsConfig {
     let default_tools_config = ToolsConfig { tools: ToolsConfigGroup { bump_sync: Some(true) } };
 
     let root_path = Path::new(root);
-    let ref tools_path = root_path.join(String::from(".config.toml"));
+    let tools_path = &root_path.join(String::from(".config.toml"));
 
     if tools_path.exists() {
         let config_file = File::open(tools_path).expect("Failed to open config file");
@@ -230,18 +232,19 @@ fn get_tools_config(root: &PathBuf) -> ToolsConfig {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn get_workspace_root(cwd: Option<PathBuf>) -> PathBuf {
-    let ref root = match cwd {
+    let root = match cwd {
         Some(ref dir) => {
             get_project_root_path(Some(PathBuf::from(dir))).expect("Failed to get project root")
         }
         None => get_project_root_path(None).expect("Failed to get project root"),
     };
-    PathBuf::from(root)
+    PathBuf::from(&root)
 }
 
 pub fn get_workspace_config(cwd: Option<PathBuf>) -> WorkspaceConfig {
-    let ref root = get_workspace_root(cwd);
+    let root = &get_workspace_root(cwd);
     let changes = get_changes_config(root);
     let cliff = get_cliff_config(root);
     let tools = get_tools_config(root);
@@ -251,7 +254,7 @@ pub fn get_workspace_config(cwd: Option<PathBuf>) -> WorkspaceConfig {
         changes_config: changes,
         cliff_config: cliff,
         tools_config: tools,
-        workspace_root: root.to_path_buf(),
+        workspace_root: root.clone(),
         package_manager: manager.unwrap_or(CorePackageManager::Npm),
     }
 }
@@ -263,8 +266,8 @@ mod tests {
 
     #[test]
     fn test_get_workspace_config() -> Result<(), std::io::Error> {
-        let ref monorepo = MonorepoWorkspace::new();
-        let root = monorepo.get_monorepo_root().to_path_buf();
+        let monorepo = MonorepoWorkspace::new();
+        let root = monorepo.get_monorepo_root().clone();
         monorepo.create_repository(&CorePackageManager::Pnpm)?;
 
         let config = get_workspace_config(Some(root.clone()));
@@ -283,7 +286,7 @@ mod tests {
         let root = &std::fs::canonicalize(Path::new(current_dir.as_os_str()))?;
         let config = get_workspace_config(Some(current_dir));
 
-        assert_ne!(config.workspace_root, root.to_path_buf());
+        assert_ne!(config.workspace_root, root.clone());
 
         Ok(())
     }

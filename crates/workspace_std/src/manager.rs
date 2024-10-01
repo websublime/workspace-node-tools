@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter, Result},
-    path::PathBuf,
+    path::Path,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -36,7 +36,7 @@ impl Display for CorePackageManager {
 }
 
 /// Detects which package manager is available in the workspace.
-pub fn detect_package_manager(path: &PathBuf) -> Option<CorePackageManager> {
+pub fn detect_package_manager(path: &Path) -> Option<CorePackageManager> {
     let package_manager_files = HashMap::from([
         ("package-lock.json", CorePackageManager::Npm),
         ("npm-shrinkwrap.json", CorePackageManager::Npm),
@@ -45,16 +45,16 @@ pub fn detect_package_manager(path: &PathBuf) -> Option<CorePackageManager> {
         ("bun.lockb", CorePackageManager::Bun),
     ]);
 
-    for (file, package_manager) in package_manager_files.iter() {
+    for (file, package_manager) in package_manager_files {
         let lock_file = path.join(file);
 
         if lock_file.exists() {
-            return Some(*package_manager);
+            return Some(package_manager);
         }
     }
 
     if let Some(parent) = path.parent() {
-        return detect_package_manager(&parent.to_path_buf());
+        return detect_package_manager(parent);
     }
 
     None

@@ -8,12 +8,9 @@ use workspace_std::{changes::Changes, config::get_workspace_config};
 pub fn js_init_changes(env: Env, cwd: Option<String>) -> Object {
     let mut changes_object = env.create_object().unwrap();
 
-    let root = match cwd {
-        Some(cwd) => Some(PathBuf::from(cwd)),
-        None => None,
-    };
+    let root = cwd.map(PathBuf::from);
 
-    let ref config = get_workspace_config(root);
+    let config = &get_workspace_config(root);
     let changes = Changes::from(config);
 
     let data = changes.init();

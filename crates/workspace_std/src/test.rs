@@ -49,7 +49,6 @@ impl MonorepoWorkspace {
         package_manager: &CorePackageManager,
     ) -> Result<(), std::io::Error> {
         let monorepo_package_json = &self.root.join("package.json");
-        let monorepo_changes_json = &self.root.join(".changes.json");
         let monorepo_config_toml = &self.root.join(".config.toml");
         let monorepo_packages_dir = &self.root.join("packages");
 
@@ -81,25 +80,6 @@ impl MonorepoWorkspace {
             .open(monorepo_package_json.as_path())?;
         let monorepo_root_json_writer = BufWriter::new(monorepo_package_root_json_file);
         serde_json::to_writer_pretty(monorepo_root_json_writer, &package_root_json)?;
-
-        let monorepo_changes_json_data = r#"
-        {
-            "message": "chore(release): release new version",
-            "git_user_name": "github-actions[bot]",
-            "git_user_email": "github-actions[bot]@users.noreply.git.com",
-            "changes": {}
-        }"#;
-
-        let package_changes_json =
-            serde_json::from_str::<serde_json::Value>(monorepo_changes_json_data)?;
-        let monorepo_package_changes_json_file = OpenOptions::new()
-            .write(true)
-            .append(false)
-            .truncate(true)
-            .create(true)
-            .open(monorepo_changes_json.as_path())?;
-        let monorepo_changes_json_writer = BufWriter::new(monorepo_package_changes_json_file);
-        serde_json::to_writer_pretty(monorepo_changes_json_writer, &package_changes_json)?;
 
         let monorepo_config_data = r#"
 [tools]
@@ -260,10 +240,46 @@ sort_commits = "newest"
         Ok(())
     }
 
+    pub fn create_changes(&self) -> Result<(), std::io::Error> {
+        let monorepo_changes_json = &self.root.join(".changes.json");
+
+        self.repository
+            .create_branch("feature/changes")
+            .expect("Failed to create branch feature/changes");
+
+        let monorepo_changes_json_data = r#"
+      {
+          "message": "chore(release): release new version",
+          "git_user_name": "github-actions[bot]",
+          "git_user_email": "github-actions[bot]@users.noreply.git.com",
+          "changes": {}
+      }"#;
+
+        let package_changes_json =
+            serde_json::from_str::<serde_json::Value>(monorepo_changes_json_data)?;
+        let monorepo_package_changes_json_file = OpenOptions::new()
+            .write(true)
+            .append(false)
+            .truncate(true)
+            .create(true)
+            .open(monorepo_changes_json.as_path())?;
+        let monorepo_changes_json_writer = BufWriter::new(monorepo_package_changes_json_file);
+        serde_json::to_writer_pretty(monorepo_changes_json_writer, &package_changes_json)?;
+
+        self.repository.add_all().expect("Failed to add all files");
+        self.repository
+            .commit("feat: add changes file", None, None)
+            .expect("Failed to commit changes");
+        self.repository.checkout("main").expect("Failed to checkout main branch");
+        self.repository.merge("feature/changes").expect("Failed to merge branches");
+
+        Ok(())
+    }
+
     pub fn create_package_foo(&self) -> Result<(), std::io::Error> {
         self.repository
             .create_branch("feature/package-foo")
-            .expect("Failet to create branch feature/package-foo");
+            .expect("Failed to create branch feature/package-foo");
 
         let monorepo_packages_dir = &self.root.join("packages");
         let monorepo_package_foo_dir = &monorepo_packages_dir.join("package-foo");
@@ -322,7 +338,7 @@ sort_commits = "newest"
         self.repository.add_all().expect("Failed to add all files");
         self.repository
             .commit("feat: add package foo", None, None)
-            .expect("Failed to commit changes");
+            .expect("Failed to commit package foo");
         self.repository.checkout("main").expect("Failed to checkout main branch");
         self.repository.merge("feature/package-foo").expect("Failed to merge branches");
         self.repository

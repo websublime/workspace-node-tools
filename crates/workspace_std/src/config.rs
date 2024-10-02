@@ -9,7 +9,7 @@ use std::io::BufReader;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::changes::ChangesFileData;
+use crate::changes::ChangesConfig;
 use crate::manager::{detect_package_manager, CorePackageManager};
 use crate::paths::get_project_root_path;
 
@@ -45,7 +45,7 @@ fn get_changes_config(root: &PathBuf) -> HashMap<String, String> {
         let changes_file = File::open(changes_path).expect("Failed to open changes file");
         let changes_reader = BufReader::new(changes_file);
 
-        let changes_config: ChangesFileData =
+        let changes_config: ChangesConfig =
             serde_json::from_reader(changes_reader).expect("Failed to parse changes file");
 
         HashMap::from([

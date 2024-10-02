@@ -26,3 +26,4 @@ regex = { workspace = true }
 toml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 git-cliff-core = "2.6.0"
+itertools = "0.13.0"

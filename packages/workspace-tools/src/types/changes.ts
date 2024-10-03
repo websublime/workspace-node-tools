@@ -2,7 +2,7 @@ export type BumpType = 'major' | 'minor' | 'patch' | 'snapshot'
 
 export interface Change {
   package: string
-  release_as: BumpType
+  releaseAs: BumpType
 }
 
 export interface Changes {

@@ -361,4 +361,6 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
+module.exports.addChange = nativeBinding.addChange
 module.exports.initChanges = nativeBinding.initChanges
+module.exports.removeChange = nativeBinding.removeChange

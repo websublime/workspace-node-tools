@@ -51,7 +51,7 @@
         "fs": true
       }
     },
-    "dtsHeader": "import type { Changes } from './types/changes';\n\n"
+    "dtsHeader": "import type { Changes, Change } from './types/changes';\n\n"
   },
   "engines": {
     "node": ">= 10"

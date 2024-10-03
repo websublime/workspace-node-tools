@@ -1,9 +1,13 @@
+export type BumpType = 'major' | 'minor' | 'patch' | 'snapshot'
+
 export interface Change {
-  depoy: string[]
   package: string
-  release_as: string
+  release_as: BumpType
 }
 
 export interface Changes {
-  [key: string]: Change[]
+  [key: string]: {
+    deploy: string[]
+    packages: Change[]
+  }
 }

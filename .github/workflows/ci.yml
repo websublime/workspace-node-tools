@@ -81,3 +81,10 @@ jobs:
     with:
       os: ${{ matrix.target }}
       changed: ${{ needs.changes.outputs.rust-changes == 'true' }}
+
+  pkg-preview:
+    name: Pkg Preview
+    needs:
+      - rust-validation
+      - cargo-test
+    uses: ./.github/workflows/preview.yml

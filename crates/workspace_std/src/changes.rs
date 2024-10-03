@@ -357,8 +357,6 @@ mod tests {
         assert!(change_meta.deploy.contains(&"production".to_string()));
         assert_eq!(change_meta.pkgs.len(), 2);
 
-        assert!(true);
-
         monorepo.delete_repository();
 
         Ok(())

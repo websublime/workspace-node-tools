@@ -9,6 +9,10 @@
   "workspaces": [
     "packages/*"
   ],
+  "repository": {
+    "url": "git+ssh://git@github.com:websublime/workspace-tools.git",
+    "type": "git"
+  },
   "scripts": {
     "prepare": "husky install",
     "ci:build-release-binding": "pnpm --filter @websublime/workspace-tools run build-binding:release"

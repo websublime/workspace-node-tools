@@ -128,4 +128,25 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_from_manager() -> Result<(), std::io::Error> {
+        let npm_manager = CorePackageManager::from("npm".to_string());
+        let yarn_manager = CorePackageManager::from("yarn".to_string());
+        let pnpm_manager = CorePackageManager::from("pnpm".to_string());
+        let bun_manager = CorePackageManager::from("bun".to_string());
+
+        assert_eq!(npm_manager, CorePackageManager::Npm);
+        assert_eq!(yarn_manager, CorePackageManager::Yarn);
+        assert_eq!(pnpm_manager, CorePackageManager::Pnpm);
+        assert_eq!(bun_manager, CorePackageManager::Bun);
+
+        Ok(())
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_unknown_manager() {
+        let _ = CorePackageManager::from("unknown".to_string());
+    }
 }

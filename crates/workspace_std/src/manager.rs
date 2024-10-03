@@ -130,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_manager() -> Result<(), std::io::Error> {
+    fn test_from_manager() {
         let npm_manager = CorePackageManager::from("npm".to_string());
         let yarn_manager = CorePackageManager::from("yarn".to_string());
         let pnpm_manager = CorePackageManager::from("pnpm".to_string());
@@ -140,12 +140,10 @@ mod tests {
         assert_eq!(yarn_manager, CorePackageManager::Yarn);
         assert_eq!(pnpm_manager, CorePackageManager::Pnpm);
         assert_eq!(bun_manager, CorePackageManager::Bun);
-
-        Ok(())
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "Unable to identify package manager: unknown")]
     fn test_unknown_manager() {
         let _ = CorePackageManager::from("unknown".to_string());
     }

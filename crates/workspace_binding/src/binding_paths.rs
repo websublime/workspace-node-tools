@@ -1,5 +1,4 @@
-#![allow(clippy::bind_instead_of_map)]
-#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::manual_map)]
 use std::path::PathBuf;
 
 use workspace_std::paths::get_project_root_path;

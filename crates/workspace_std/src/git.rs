@@ -8,6 +8,7 @@ use crate::types::GitResult;
 use crate::utils::strip_trailing_newline;
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     env::temp_dir,
@@ -19,12 +20,12 @@ use std::{
     str,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Repository {
     location: PathBuf,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RepositoryCommit {
     hash: String,
     author_name: String,
@@ -33,10 +34,27 @@ pub struct RepositoryCommit {
     message: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RepositoryRemoteTags {
     tag: String,
     hash: String,
+}
+
+impl From<&PathBuf> for Repository {
+    fn from(root: &PathBuf) -> Self {
+        let canonic_path =
+            &std::fs::canonicalize(Path::new(root.as_os_str())).expect("Invalid path");
+        Repository { location: canonic_path.clone() }
+    }
+}
+
+impl From<&str> for Repository {
+    fn from(root: &str) -> Self {
+        let path_buff = PathBuf::from(root);
+        let canonic_path =
+            &std::fs::canonicalize(Path::new(path_buff.as_os_str())).expect("Invalid path");
+        Repository { location: canonic_path.clone() }
+    }
 }
 
 impl Repository {
@@ -148,7 +166,7 @@ impl Repository {
         execute_git(
             &self.location,
             [
-                "",
+                "log",
                 format!("{}..HEAD", branch).as_str(),
                 "--online",
                 "--pretty=format:%h",

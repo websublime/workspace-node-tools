@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "repository": {
-    "url": "git+ssh://git@github.com:websublime/workspace-tools.git",
+    "url": "git+ssh://git@github.com/websublime/workspace-node-tools.git",
     "type": "git"
   },
   "scripts": {

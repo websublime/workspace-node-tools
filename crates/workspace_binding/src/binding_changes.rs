@@ -80,3 +80,21 @@ pub fn js_remove_change(branch: String, cwd: Option<String>) -> bool {
 
     changes.remove(branch.as_str())
 }
+
+#[napi(js_name = "getChanges", ts_args_type = "cwd?: string", ts_return_type = "Changes")]
+pub fn js_get_changes(env: Env, cwd: Option<String>) -> Object {
+    let mut changes_object = env.create_object().unwrap();
+
+    let root = cwd.map(PathBuf::from);
+    let config = &get_workspace_config(root);
+    let changes = Changes::from(config);
+
+    let data = changes.changes();
+
+    data.iter().for_each(|(key, change)| {
+        let value = serde_json::to_value(change).unwrap();
+        changes_object.set(key.as_str(), value).unwrap();
+    });
+
+    changes_object
+}

@@ -8,6 +8,6 @@ export interface Change {
 export interface Changes {
   [key: string]: {
     deploy: string[]
-    packages: Change[]
+    pkgs: Change[]
   }
 }

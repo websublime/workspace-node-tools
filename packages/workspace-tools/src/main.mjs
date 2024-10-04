@@ -1,4 +1,4 @@
-import { initChanges, addChange, removeChange } from './binding.js'
+import { initChanges, addChange, removeChange, getChanges } from './binding.js'
 import util from 'node:util'
 
 const log = (() => {
@@ -24,5 +24,7 @@ const root = process.cwd()
 log(initChanges(root))
 
 log(addChange({ package: '@scope/foo', releaseAs: 'patch' }, ['int'], root))
+
+log(getChanges(root))
 
 log(removeChange('feature/next', root))

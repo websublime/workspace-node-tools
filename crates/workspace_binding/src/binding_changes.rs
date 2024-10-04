@@ -1,3 +1,5 @@
+#![allow(clippy::bind_instead_of_map)]
+#![allow(clippy::needless_pass_by_value)]
 use napi::{bindgen_prelude::Object, Error, Result};
 use napi::{Env, Status};
 use std::path::PathBuf;

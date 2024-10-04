@@ -6,6 +6,7 @@ import {
   getChangesByBranch,
   getChangesByPackage,
   getConfig,
+  detectPackageManager,
 } from './binding.js'
 import util from 'node:util'
 
@@ -40,6 +41,8 @@ log(getChangesByBranch('feature/next', root))
 log(getChangesByBranch('unknown', root))
 
 log(getChangesByPackage('@scope/foo', 'feature/next', root))
+
+log(detectPackageManager(root))
 
 log(getConfig(root))
 

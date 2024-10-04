@@ -363,6 +363,7 @@ if (!nativeBinding) {
 
 module.exports.addChange = nativeBinding.addChange
 module.exports.changeExists = nativeBinding.changeExists
+module.exports.detectPackageManager = nativeBinding.detectPackageManager
 module.exports.getChanges = nativeBinding.getChanges
 module.exports.getChangesByBranch = nativeBinding.getChangesByBranch
 module.exports.getChangesByPackage = nativeBinding.getChangesByPackage

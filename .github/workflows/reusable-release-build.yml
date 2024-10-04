@@ -112,6 +112,7 @@ jobs:
             packages/workspace-tools/src/workspace-tools.*.node
 
   build-node-packages:
+    needs: build-binding
     strategy:
       fail-fast: false
     name: Build Node Package

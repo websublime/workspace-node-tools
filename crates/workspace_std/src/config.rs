@@ -2,7 +2,7 @@ use git_cliff_core::config::{
     Bump, ChangelogConfig, CommitParser, Config, GitConfig, RemoteConfig, TextProcessor,
 };
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -13,16 +13,17 @@ use crate::changes::ChangesConfig;
 use crate::manager::{detect_package_manager, CorePackageManager};
 use crate::paths::get_project_root_path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ToolsConfig {
     pub tools: ToolsConfigGroup,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ToolsConfigGroup {
     pub bump_sync: Option<bool>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WorkspaceConfig {
     pub package_manager: CorePackageManager,
     pub workspace_root: PathBuf,

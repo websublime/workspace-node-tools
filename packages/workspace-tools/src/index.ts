@@ -1,3 +1,5 @@
 export * from './types/changes'
 export * from './types/general'
+export * from './types/config'
+export * from './types/enums'
 export * from './binding.js'

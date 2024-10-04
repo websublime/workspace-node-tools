@@ -1,10 +1,12 @@
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter, Result as StdResult},
     path::Path,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CorePackageManager {
     Npm,
     Yarn,

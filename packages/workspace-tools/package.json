@@ -51,7 +51,7 @@
         "fs": true
       }
     },
-    "dtsHeader": "import type { Result } from './types/general';\n\nimport type { Changes, Change } from './types/changes';\n\n"
+    "dtsHeader": "import type { WorkspaceConfig } from './types/config';\n\nimport type { Result } from './types/general';\n\nimport type { Changes, Change } from './types/changes';\n\n"
   },
   "engines": {
     "node": ">= 10"

@@ -364,5 +364,6 @@ if (!nativeBinding) {
 module.exports.addChange = nativeBinding.addChange
 module.exports.getChanges = nativeBinding.getChanges
 module.exports.getChangesByBranch = nativeBinding.getChangesByBranch
+module.exports.getChangesByPackage = nativeBinding.getChangesByPackage
 module.exports.initChanges = nativeBinding.initChanges
 module.exports.removeChange = nativeBinding.removeChange

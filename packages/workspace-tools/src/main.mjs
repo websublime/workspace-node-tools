@@ -1,4 +1,4 @@
-import { initChanges, addChange, removeChange, getChanges, getChangesByBranch } from './binding.js'
+import { initChanges, addChange, removeChange, getChanges, getChangesByBranch, getChangesByPackage } from './binding.js'
 import util from 'node:util'
 
 const log = (() => {
@@ -28,5 +28,9 @@ log(addChange({ package: '@scope/foo', releaseAs: 'patch' }, ['int'], root))
 log(getChanges(root))
 
 log(getChangesByBranch('feature/next', root))
+
+log(getChangesByBranch('unknown', root))
+
+log(getChangesByPackage('@scope/foo', 'feature/next', root))
 
 log(removeChange('feature/next', root))

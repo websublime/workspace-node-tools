@@ -137,19 +137,25 @@ pub fn js_get_changes(env: Env, cwd: Option<String>) -> Result<Object, ChangesEr
 #[napi(
     js_name = "getChangesByBranch",
     ts_args_type = "branch: string, cwd?: string",
-    ts_return_type = "Result<{deploy: string[]; pkgs: Changes[]}>"
+    ts_return_type = "Result<{deploy: string[]; pkgs: Changes[]}|null>"
 )]
 pub fn js_get_change_by_branch(
     env: Env,
     branch: String,
     cwd: Option<String>,
-) -> Result<Object, ChangesError> {
+) -> Result<Option<Object>, ChangesError> {
     let root = cwd.map(PathBuf::from);
     let config = &get_workspace_config(root);
     let changes = Changes::from(config);
 
-    let change = changes.changes_by_branch(branch.as_str()).ok_or_else(|| {
-        Error::new(ChangesError::InvalidChange, format!("Failed to get change by branch: {branch}"))
+    let change_meta = changes.changes_by_branch(branch.as_str());
+
+    if change_meta.is_none() {
+        return Ok(None);
+    }
+
+    let change = change_meta.ok_or_else(|| {
+        Error::new(ChangesError::InvalidChange, format!("Invalid change for branch {branch}"))
     })?;
 
     let mut change_object = env.create_object().or_else(|_| {
@@ -168,5 +174,56 @@ pub fn js_get_change_by_branch(
         Err(Error::new(ChangesError::FailSetObjectProperty, "Failed to set pkgs object property"))
     })?;
 
-    Ok(change_object)
+    Ok(Some(change_object))
+}
+
+#[napi(
+    js_name = "getChangesByPackage",
+    ts_args_type = "package: string, branch: string, cwd?: string",
+    ts_return_type = "Result<Change|null>"
+)]
+pub fn js_get_changes_by_package(
+    env: Env,
+    package: String,
+    branch: String,
+    cwd: Option<String>,
+) -> Result<Option<Object>, ChangesError> {
+    let root = cwd.map(PathBuf::from);
+    let config = &get_workspace_config(root);
+    let changes = Changes::from(config);
+
+    let change_meta = changes.changes_by_package(package.as_str(), branch.as_str());
+
+    if change_meta.is_none() {
+        return Ok(None);
+    }
+
+    let change = change_meta.ok_or_else(|| {
+        Error::new(ChangesError::InvalidChange, format!("Invalid change for package {package}"))
+    })?;
+
+    let mut change_object = env.create_object().or_else(|_| {
+        Err(Error::new(ChangesError::FailCreateObject, "Failed to create changes object"))
+    })?;
+
+    let package_value = serde_json::to_value(change.package)
+        .or_else(|_| Err(Error::new(ChangesError::FailParsing, "Failed to parse package value")))?;
+    let release_value = serde_json::to_value(change.release_as)
+        .or_else(|_| Err(Error::new(ChangesError::FailParsing, "Failed to parse release value")))?;
+
+    change_object.set("package", package_value).or_else(|_| {
+        Err(Error::new(
+            ChangesError::FailSetObjectProperty,
+            "Failed to set package object property",
+        ))
+    })?;
+
+    change_object.set("releaseAs", release_value).or_else(|_| {
+        Err(Error::new(
+            ChangesError::FailSetObjectProperty,
+            "Failed to set releaseAs object property",
+        ))
+    })?;
+
+    Ok(Some(change_object))
 }

@@ -6,7 +6,9 @@ export declare function addChange(change: Change, deploy_envs?: string[], cwd?: 
 
 export declare function getChanges(cwd?: string): Result<Changes>
 
-export declare function getChangesByBranch(branch: string, cwd?: string): Result<{deploy: string[]; pkgs: Changes[]}>
+export declare function getChangesByBranch(branch: string, cwd?: string): Result<{deploy: string[]; pkgs: Changes[]}|null>
+
+export declare function getChangesByPackage(package: string, branch: string, cwd?: string): Result<Change|null>
 
 export declare function initChanges(cwd?: string | undefined | null): Result<Changes>
 

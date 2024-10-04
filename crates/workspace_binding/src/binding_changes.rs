@@ -227,3 +227,12 @@ pub fn js_get_changes_by_package(
 
     Ok(Some(change_object))
 }
+
+#[napi(js_name = "changeExists", ts_args_type = "branch: string, package: string, cwd?: string")]
+pub fn js_change_exists(branch: String, package: String, cwd: Option<String>) -> bool {
+    let root = cwd.map(PathBuf::from);
+    let config = &get_workspace_config(root);
+    let changes = Changes::from(config);
+
+    changes.exist(branch.as_str(), package.as_str())
+}

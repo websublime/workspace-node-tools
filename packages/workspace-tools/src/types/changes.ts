@@ -1,4 +1,4 @@
-export type BumpType = 'major' | 'minor' | 'patch' | 'snapshot'
+export type BumpType = 'major' | 'minor' | 'patch' | 'snapshot' | 'beta' | 'alpha' | 'rc'
 
 export interface Change {
   package: string

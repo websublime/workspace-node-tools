@@ -149,20 +149,23 @@ pub fn js_get_change_by_branch(
     let changes = Changes::from(config);
 
     let change = changes.changes_by_branch(branch.as_str()).ok_or_else(|| {
-        Error::new(
-            ChangesError::InvalidChange,
-            format!("Failed to get change by branch: {}", branch),
-        )
+        Error::new(ChangesError::InvalidChange, format!("Failed to get change by branch: {branch}"))
     })?;
 
     let mut change_object = env.create_object().or_else(|_| {
         Err(Error::new(ChangesError::FailCreateObject, "Failed to create changes object"))
     })?;
-    let value = serde_json::to_value(change).or_else(|_| {
-        Err(Error::new(ChangesError::FailParsing, "Failed to parse changes struct"))
+    let deploy_value = serde_json::to_value(change.deploy)
+        .or_else(|_| Err(Error::new(ChangesError::FailParsing, "Failed to parse deploy value")))?;
+    let pkgs_value = serde_json::to_value(change.pkgs)
+        .or_else(|_| Err(Error::new(ChangesError::FailParsing, "Failed to parse pkgs value")))?;
+
+    change_object.set("deploy", deploy_value).or_else(|_| {
+        Err(Error::new(ChangesError::FailSetObjectProperty, "Failed to set deploy object property"))
     })?;
-    change_object.set("change", value).or_else(|_| {
-        Err(Error::new(ChangesError::FailSetObjectProperty, "Failed to set branch object property"))
+
+    change_object.set("pkgs", pkgs_value).or_else(|_| {
+        Err(Error::new(ChangesError::FailSetObjectProperty, "Failed to set pkgs object property"))
     })?;
 
     Ok(change_object)

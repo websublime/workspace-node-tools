@@ -13,6 +13,7 @@
 //! - Test utilities
 pub mod changes;
 pub mod config;
+pub mod dependency;
 pub mod errors;
 pub mod git;
 pub mod manager;

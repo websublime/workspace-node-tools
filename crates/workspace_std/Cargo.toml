@@ -27,3 +27,6 @@ toml = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 git-cliff-core = "2.6.1"
 itertools = "0.13.0"
+petgraph = "0.6.5"
+semver = "1.0.23"
+version-compare = "0.2"

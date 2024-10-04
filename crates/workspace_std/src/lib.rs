@@ -17,6 +17,7 @@ pub mod dependency;
 pub mod errors;
 pub mod git;
 pub mod manager;
+pub mod package;
 pub mod paths;
 pub mod test;
 pub mod types;

@@ -69,7 +69,7 @@ where
         let nodes: Vec<(_, _)> =
             nodes.iter().map(|node| (node, graph.add_node(Step::Resolved(node)))).collect();
 
-        for (node, index) in nodes.iter() {
+        for (node, index) in &nodes {
             for dependency in node.dependencies() {
                 // Check to see if we can resolve this dependency internally.
                 if let Some((_, dependent)) = nodes.iter().find(|(dep, _)| dep.matches(dependency))
@@ -133,6 +133,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::print_stdout)]
 mod tests {
 
     use super::{DependencyGraph, Node, Step};
@@ -374,7 +375,7 @@ mod tests {
                 // iterating over our graph would yield that as a Step::Unresolved *before*
                 // the `second_order` package.
                 Step::Unresolved(dependency) => {
-                    println!("External {}@{}!", dependency.name, dependency.version.to_string())
+                    println!("External {}@{}!", dependency.name, dependency.version);
                 }
             }
         }

@@ -47,4 +47,4 @@ jobs:
           find ./packages/ -type d -maxdepth 1 -exec cp THIRD-PARTY-LICENSE {} \;
 
       - name: Release
-        run: pnpx pkg-pr-new publish --compact --pnpm './packages/workspace-tools/npm/*' './packages/workspace-tools'
+        run: pnpx pkg-pr-new publish --pnpm './packages/workspace-tools/npm/*' './packages/workspace-tools'

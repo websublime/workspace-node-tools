@@ -13,6 +13,9 @@ pub enum ChangesError {
     InvalidPackageProperty,
     InvalidReleaseAsProperty,
     InvalidChange,
+    FailCreateObject,
+    FailSetObjectProperty,
+    FailParsing,
     NapiError(Error<Status>),
 }
 
@@ -22,14 +25,19 @@ impl AsRef<str> for ChangesError {
             Self::InvalidPackageProperty => "Invalid package property",
             Self::InvalidReleaseAsProperty => "Invalid releaseAs property",
             Self::InvalidChange => "Invalid change",
+            Self::FailCreateObject => "Failed to create object",
+            Self::FailSetObjectProperty => "Failed to set object property",
+            Self::FailParsing => "Failed to parse struct",
             Self::NapiError(e) => e.status.as_ref(),
         }
     }
 }
 
-#[napi(js_name = "initChanges", ts_return_type = "Changes")]
-pub fn js_init_changes(env: Env, cwd: Option<String>) -> Object {
-    let mut changes_object = env.create_object().unwrap();
+#[napi(js_name = "initChanges", ts_return_type = "Result<Changes>")]
+pub fn js_init_changes(env: Env, cwd: Option<String>) -> Result<Object, ChangesError> {
+    let mut changes_object = env.create_object().or_else(|_| {
+        Err(Error::new(ChangesError::FailCreateObject, "Failed to create changes object"))
+    })?;
 
     let root = cwd.map(PathBuf::from);
 
@@ -39,16 +47,29 @@ pub fn js_init_changes(env: Env, cwd: Option<String>) -> Object {
     let data = changes.init();
 
     data.changes.iter().for_each(|(key, change)| {
-        let value = serde_json::to_value(change).unwrap();
-        changes_object.set(key.as_str(), value).unwrap();
+        let value = serde_json::to_value(change)
+            .or_else(|_| {
+                Err(Error::new(ChangesError::FailParsing, "Failed to parse changes struct"))
+            })
+            .unwrap();
+        changes_object
+            .set(key.as_str(), value)
+            .or_else(|_| {
+                Err(Error::new(
+                    ChangesError::FailSetObjectProperty,
+                    "Failed to set branch object property",
+                ))
+            })
+            .unwrap();
     });
 
-    changes_object
+    Ok(changes_object)
 }
 
 #[napi(
     js_name = "addChange",
-    ts_args_type = "change: Change, deploy_envs?: string[], cwd?: string"
+    ts_args_type = "change: Change, deploy_envs?: string[], cwd?: string",
+    ts_return_type = "Result<boolean>"
 )]
 pub fn js_add_change(
     change: Object,
@@ -81,9 +102,11 @@ pub fn js_remove_change(branch: String, cwd: Option<String>) -> bool {
     changes.remove(branch.as_str())
 }
 
-#[napi(js_name = "getChanges", ts_args_type = "cwd?: string", ts_return_type = "Changes")]
-pub fn js_get_changes(env: Env, cwd: Option<String>) -> Object {
-    let mut changes_object = env.create_object().unwrap();
+#[napi(js_name = "getChanges", ts_args_type = "cwd?: string", ts_return_type = "Result<Changes>")]
+pub fn js_get_changes(env: Env, cwd: Option<String>) -> Result<Object, ChangesError> {
+    let mut changes_object = env.create_object().or_else(|_| {
+        Err(Error::new(ChangesError::FailCreateObject, "Failed to create changes object"))
+    })?;
 
     let root = cwd.map(PathBuf::from);
     let config = &get_workspace_config(root);
@@ -92,9 +115,55 @@ pub fn js_get_changes(env: Env, cwd: Option<String>) -> Object {
     let data = changes.changes();
 
     data.iter().for_each(|(key, change)| {
-        let value = serde_json::to_value(change).unwrap();
-        changes_object.set(key.as_str(), value).unwrap();
+        let value = serde_json::to_value(change)
+            .or_else(|_| {
+                Err(Error::new(ChangesError::FailParsing, "Failed to parse changes struct"))
+            })
+            .unwrap();
+        changes_object
+            .set(key.as_str(), value)
+            .or_else(|_| {
+                Err(Error::new(
+                    ChangesError::FailSetObjectProperty,
+                    "Failed to set branch object property",
+                ))
+            })
+            .unwrap();
     });
 
-    changes_object
+    Ok(changes_object)
+}
+
+#[napi(
+    js_name = "getChangesByBranch",
+    ts_args_type = "branch: string, cwd?: string",
+    ts_return_type = "Result<{deploy: string[]; pkgs: Changes[]}>"
+)]
+pub fn js_get_change_by_branch(
+    env: Env,
+    branch: String,
+    cwd: Option<String>,
+) -> Result<Object, ChangesError> {
+    let root = cwd.map(PathBuf::from);
+    let config = &get_workspace_config(root);
+    let changes = Changes::from(config);
+
+    let change = changes.changes_by_branch(branch.as_str()).ok_or_else(|| {
+        Error::new(
+            ChangesError::InvalidChange,
+            format!("Failed to get change by branch: {}", branch),
+        )
+    })?;
+
+    let mut change_object = env.create_object().or_else(|_| {
+        Err(Error::new(ChangesError::FailCreateObject, "Failed to create changes object"))
+    })?;
+    let value = serde_json::to_value(change).or_else(|_| {
+        Err(Error::new(ChangesError::FailParsing, "Failed to parse changes struct"))
+    })?;
+    change_object.set("change", value).or_else(|_| {
+        Err(Error::new(ChangesError::FailSetObjectProperty, "Failed to set branch object property"))
+    })?;
+
+    Ok(change_object)
 }

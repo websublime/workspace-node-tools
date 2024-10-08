@@ -2,7 +2,7 @@ use petgraph::{stable_graph::StableDiGraph, Direction};
 
 /// Must be implemented by the type you wish
 pub trait Node {
-    /// Encodes a dependency relationship. In a Package Manager dependency graph for intance, this might be a (package name, version) tuple.
+    /// Encodes a dependency relationship. In a Package Manager dependency graph for instance, this might be a (package name, version) tuple.
     /// It might also just be the exact same type as the one that implements the Node trait, in which case `Node::matches` can be implemented through simple equality.
     type DependencyType;
 
@@ -19,6 +19,7 @@ pub trait Node {
 /// externally (unresolved) dependencies.
 /// An Unresolved dependency does not necessarily mean that it *cannot* be resolved,
 /// only that no Node within the graph fulfills it.
+#[derive(Debug)]
 pub enum Step<'a, N: Node> {
     Resolved(&'a N),
     Unresolved(&'a N::DependencyType),
@@ -50,7 +51,7 @@ impl<'a, N: Node> Step<'a, N> {
 /// The [`DependencyGraph`] structure builds an internal [Directed Graph](`petgraph::stable_graph::StableDiGraph`), which can then be traversed
 /// in an order which ensures that dependent Nodes are visited before their parents.
 pub struct DependencyGraph<'a, N: Node> {
-    graph: StableDiGraph<Step<'a, N>, &'a N::DependencyType>,
+    pub graph: StableDiGraph<Step<'a, N>, &'a N::DependencyType>,
 }
 
 /// The only way to build a [`DependencyGraph`] is from a slice of objects implementing [`Node`].

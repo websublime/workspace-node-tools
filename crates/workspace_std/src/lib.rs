@@ -22,3 +22,4 @@ pub mod paths;
 pub mod test;
 pub mod types;
 pub mod utils;
+pub mod workspace;

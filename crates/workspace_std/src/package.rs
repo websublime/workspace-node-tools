@@ -27,6 +27,26 @@ pub struct PackageInfo {
     pub pkg_json: Value,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PackageJson {
+    pub workspaces: Option<Vec<String>>,
+    pub name: String,
+    pub version: String,
+    pub description: Option<String>,
+    pub private: Option<bool>,
+    pub license: Option<String>,
+    pub author: Option<String>,
+    pub homepage: Option<String>,
+    pub repository: Option<Value>,
+    pub dependencies: Option<Value>,
+    pub dev_dependencies: Option<Value>,
+    pub peer_dependencies: Option<Value>,
+    pub optional_dependencies: Option<Value>,
+    pub engines: Option<Value>,
+    pub scripts: Option<Value>,
+    pub bin: Option<Value>,
+}
+
 impl Node for PackageInfo {
     type DependencyType = Dependency;
 

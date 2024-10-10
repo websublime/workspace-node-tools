@@ -730,6 +730,21 @@ sort_commits = "newest"
         Ok(())
     }
 
+    pub fn create_workspace(
+        &self,
+        package_manager: &CorePackageManager,
+    ) -> Result<(), std::io::Error> {
+        self.create_repository(package_manager)?;
+        self.create_changes()?;
+        self.create_package_bar()?;
+        self.create_package_foo()?;
+        self.create_package_baz()?;
+        self.create_package_charlie()?;
+        self.create_package_major()?;
+        self.create_package_tom()?;
+        Ok(())
+    }
+
     pub fn delete_repository(&self) -> bool {
         remove_dir_all(&self.root).is_ok()
     }

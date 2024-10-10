@@ -29,4 +29,4 @@ git-cliff-core = "2.6.1"
 itertools = "0.13.0"
 petgraph = "0.6.5"
 semver = { version = "1.0.23", features = ["serde"] }
-version-compare = "0.2"
+wax = { version = "0.6.0", features = ["walk"] }

@@ -7,15 +7,15 @@ use crate::dependency::Node;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Dependency {
-    name: String,
-    version: VersionReq,
+    pub name: String,
+    pub version: VersionReq,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Package {
-    name: String,
-    version: Version,
-    dependencies: Vec<Dependency>,
+    pub name: String,
+    pub version: Version,
+    pub dependencies: Vec<Dependency>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -29,21 +29,35 @@ pub struct PackageInfo {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PackageJson {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub workspaces: Option<Vec<String>>,
     pub name: String,
     pub version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub private: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub license: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub homepage: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dependencies: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_dependencies: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub peer_dependencies: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub optional_dependencies: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub engines: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scripts: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bin: Option<Value>,
 }
 

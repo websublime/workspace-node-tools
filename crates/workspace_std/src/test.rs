@@ -59,7 +59,7 @@ impl MonorepoWorkspace {
 
         let monorepo_root_json = r#"
         {
-            "name": "@scope/root",
+            "name": "root",
             "version": "0.0.0",
             "workspaces": [
                 "packages/package-foo",

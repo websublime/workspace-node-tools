@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use std::process::{Command, Stdio};
 use std::{
     fs::{canonicalize, File},
     io::BufReader,
@@ -8,8 +10,16 @@ use wax::{CandidatePath, Glob, Pattern};
 use crate::{
     config::{get_workspace_config, WorkspaceConfig},
     manager::CorePackageManager,
-    package::PackageJson,
+    package::{Dependency, Package, PackageInfo, PackageJson},
 };
+
+#[derive(Debug, Deserialize, Serialize)]
+/// A struct that represents a pnpm workspace.
+struct PnpmInfo {
+    pub name: String,
+    pub path: String,
+    pub private: bool,
+}
 
 pub struct Workspace {
     pub config: WorkspaceConfig,
@@ -36,19 +46,13 @@ impl Workspace {
         Workspace { config }
     }
 
-    pub fn get_packages(&self) {
+    pub fn get_packages(&self) -> Vec<PackageInfo> {
         let manager = self.config.package_manager;
 
         match manager {
-            CorePackageManager::Npm | CorePackageManager::Yarn => {
-                self.get_packages_from_npm();
-            }
-            CorePackageManager::Bun => {
-                todo!("Implement Bun package manager")
-            }
-            CorePackageManager::Pnpm => {
-                todo!("Implement Pnpm package manager")
-            }
+            CorePackageManager::Npm | CorePackageManager::Yarn => self.get_packages_from_npm(),
+            CorePackageManager::Bun => todo!("Bun is not yet supported"),
+            CorePackageManager::Pnpm => self.get_packages_from_pnpm(),
         }
     }
 
@@ -61,11 +65,100 @@ impl Workspace {
         serde_json::from_reader(package_json_buffer).expect("Error parsing package.json")
     }
 
+    #[allow(clippy::unused_self)]
+    fn aggregate_dependencies(&self, package_json: &PackageJson) -> Vec<Dependency> {
+        let mut package_dependencies = vec![];
+
+        let dependencies = package_json.dependencies.clone().unwrap_or_default();
+        let dev_dependencies = package_json.dev_dependencies.clone().unwrap_or_default();
+        let peer_dependencies = package_json.peer_dependencies.clone().unwrap_or_default();
+        let optional_dependencies = package_json.optional_dependencies.clone().unwrap_or_default();
+
+        if dependencies.is_object() {
+            dependencies.as_object().iter().for_each(|dep| {
+                dep.keys().for_each(|key| {
+                    let dependency = Dependency {
+                        name: key.clone(),
+                        version: dep
+                            .get(key)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string()
+                            .parse()
+                            .unwrap(),
+                    };
+                    package_dependencies.push(dependency);
+                });
+            });
+        }
+
+        if dev_dependencies.is_object() {
+            dev_dependencies.as_object().iter().for_each(|dep| {
+                dep.keys().for_each(|key| {
+                    let dependency = Dependency {
+                        name: key.clone(),
+                        version: dep
+                            .get(key)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string()
+                            .parse()
+                            .unwrap(),
+                    };
+                    package_dependencies.push(dependency);
+                });
+            });
+        }
+
+        if peer_dependencies.is_object() {
+            peer_dependencies.as_object().iter().for_each(|dep| {
+                dep.keys().for_each(|key| {
+                    let dependency = Dependency {
+                        name: key.clone(),
+                        version: dep
+                            .get(key)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string()
+                            .parse()
+                            .unwrap(),
+                    };
+                    package_dependencies.push(dependency);
+                });
+            });
+        }
+
+        if optional_dependencies.is_object() {
+            optional_dependencies.as_object().iter().for_each(|dep| {
+                dep.keys().for_each(|key| {
+                    let dependency = Dependency {
+                        name: key.clone(),
+                        version: dep
+                            .get(key)
+                            .unwrap()
+                            .as_str()
+                            .unwrap()
+                            .to_string()
+                            .parse()
+                            .unwrap(),
+                    };
+                    package_dependencies.push(dependency);
+                });
+            });
+        }
+
+        package_dependencies
+    }
+
     #[allow(clippy::needless_borrows_for_generic_args)]
-    fn get_packages_from_npm(&self) {
+    fn get_packages_from_npm(&self) -> Vec<PackageInfo> {
         let path = self.config.workspace_root.as_path();
         let PackageJson { workspaces, .. } = self.get_root_package_json();
         let mut workspaces = workspaces.unwrap_or_default();
+        let mut packages = vec![];
 
         let globs = workspaces
             .iter_mut()
@@ -95,7 +188,7 @@ impl Workspace {
             .expect("Error walking glob")
         {
             let entry = entry.expect("Error reading entry");
-            let _rel_path = entry
+            let rel_path = entry
                 .path()
                 .strip_prefix(&path)
                 .expect("Error getting entry path")
@@ -109,32 +202,75 @@ impl Workspace {
                 let pkg_json: PackageJson = serde_json::from_reader(package_json_reader)
                     .expect("Failed to parse package json file");
 
-                let mut package_dependencies = vec![];
+                let package_dependencies = self.aggregate_dependencies(&pkg_json);
 
-                let dependencies = pkg_json.dependencies.unwrap_or_default();
-                let dev_dependencies = pkg_json.dev_dependencies.unwrap_or_default();
-                let peer_dependencies = pkg_json.peer_dependencies.unwrap_or_default();
-                let optional_dependencies = pkg_json.optional_dependencies.unwrap_or_default();
+                let package = Package {
+                    name: pkg_json.name.clone(),
+                    version: pkg_json.version.parse().unwrap(),
+                    dependencies: package_dependencies,
+                };
 
-                if dependencies.is_object() {
-                    package_dependencies.push(dependencies);
-                }
-
-                if dev_dependencies.is_object() {
-                    package_dependencies.push(dev_dependencies);
-                }
-
-                if peer_dependencies.is_object() {
-                    package_dependencies.push(peer_dependencies);
-                }
-
-                if optional_dependencies.is_object() {
-                    package_dependencies.push(optional_dependencies);
-                }
-
-                //let dependencies = dependencies.into_iter().flatten().collect::<Vec<_>>();
+                packages.push(PackageInfo {
+                    package,
+                    package_path: entry.path().to_str().unwrap().replace("/package.json", ""),
+                    package_json_path: entry.path().to_str().unwrap().to_string(),
+                    package_relative_path: rel_path.replace("/package.json", ""),
+                    pkg_json: serde_json::to_value(pkg_json)
+                        .expect("Error converting package json"),
+                });
             }
         }
+
+        packages
+    }
+
+    fn get_packages_from_pnpm(&self) -> Vec<PackageInfo> {
+        let path = &self.config.workspace_root.as_path();
+
+        let mut command = Command::new("pnpm");
+        command.current_dir(path).arg("list").arg("-r").arg("--depth").arg("-1").arg("--json");
+
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let output = command.output().expect("Failed to execute command");
+        let output_slice = &output.stdout.as_slice();
+        let pnpm_info = serde_json::from_slice::<Vec<PnpmInfo>>(output_slice)
+            .expect("Failed to parse pnpm list");
+
+        pnpm_info
+            .iter()
+            .map(|pkgs| {
+                let package_path = PathBuf::from(pkgs.path.clone());
+                let package_json_path = package_path.join("package.json");
+
+                let package_json_file = File::open(&package_json_path).expect("File not found");
+                let package_json_reader = BufReader::new(package_json_file);
+                let pkg_json: PackageJson = serde_json::from_reader(package_json_reader)
+                    .expect("Failed to parse package json file");
+
+                let package_dependencies = self.aggregate_dependencies(&pkg_json);
+
+                let package = Package {
+                    name: pkg_json.name.clone(),
+                    version: pkg_json.version.parse().unwrap(),
+                    dependencies: package_dependencies,
+                };
+
+                PackageInfo {
+                    package,
+                    package_path: package_path.to_str().unwrap().to_string(),
+                    package_json_path: package_json_path.to_str().unwrap().to_string(),
+                    package_relative_path: package_path
+                        .strip_prefix(path)
+                        .expect("Error getting entry path")
+                        .display()
+                        .to_string(),
+                    pkg_json: serde_json::to_value(pkg_json)
+                        .expect("Error converting package json"),
+                }
+            })
+            .collect::<Vec<PackageInfo>>()
     }
 }
 
@@ -145,13 +281,31 @@ mod tests {
     use crate::test::MonorepoWorkspace;
 
     #[test]
-    fn test_workspace() -> Result<(), std::io::Error> {
+    fn test_get_npm_packages() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
         let root = monorepo.get_monorepo_root().clone();
         monorepo.create_workspace(&CorePackageManager::Npm)?;
 
         let workspace = Workspace::new(root);
-        workspace.get_packages();
+        let packages = workspace.get_packages();
+
+        assert_eq!(packages.len(), 6);
+
+        monorepo.delete_repository();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_pnpm_packages() -> Result<(), std::io::Error> {
+        let monorepo = MonorepoWorkspace::new();
+        let root = monorepo.get_monorepo_root().clone();
+        monorepo.create_workspace(&CorePackageManager::Pnpm)?;
+
+        let workspace = Workspace::new(root);
+        let packages = workspace.get_packages();
+        dbg!(&packages);
+        assert_eq!(packages.len(), 7);
 
         monorepo.delete_repository();
 

@@ -1,4 +1,5 @@
 use petgraph::{stable_graph::StableDiGraph, Direction};
+use std::fmt::Display;
 
 /// Must be implemented by the type you wish
 pub trait Node {
@@ -19,7 +20,7 @@ pub trait Node {
 /// externally (unresolved) dependencies.
 /// An Unresolved dependency does not necessarily mean that it *cannot* be resolved,
 /// only that no Node within the graph fulfills it.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Step<'a, N: Node> {
     Resolved(&'a N),
     Unresolved(&'a N::DependencyType),
@@ -48,8 +49,18 @@ impl<'a, N: Node> Step<'a, N> {
     }
 }
 
+impl<'a, N: Node> Display for Step<'a, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Step::Resolved(_node) => write!(f, "Resolved"),
+            Step::Unresolved(_dependency) => write!(f, "Unresolved"),
+        }
+    }
+}
+
 /// The [`DependencyGraph`] structure builds an internal [Directed Graph](`petgraph::stable_graph::StableDiGraph`), which can then be traversed
 /// in an order which ensures that dependent Nodes are visited before their parents.
+#[derive(Debug, Clone)]
 pub struct DependencyGraph<'a, N: Node> {
     pub graph: StableDiGraph<Step<'a, N>, &'a N::DependencyType>,
 }
@@ -137,7 +148,10 @@ where
 #[allow(clippy::print_stdout)]
 mod tests {
 
+    use std::fmt::Display;
+
     use super::{DependencyGraph, Node, Step};
+    use petgraph::dot::Dot;
     use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 
     #[derive(Debug)]
@@ -162,6 +176,18 @@ mod tests {
 
         fn matches(&self, dependency: &Self::DependencyType) -> bool {
             self.name == dependency.name && dependency.version.matches(&self.version)
+        }
+    }
+
+    impl Display for Package {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}@{}", self.name, self.version)
+        }
+    }
+
+    impl Display for Dependency {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}@{}", self.name, self.version)
         }
     }
 
@@ -246,6 +272,16 @@ mod tests {
                 ],
             },
         ]
+    }
+
+    #[test]
+    fn test_graph() {
+        let build = build_test_graph();
+        let dependency_graph = DependencyGraph::from(&build[..]);
+
+        println!("{}", Dot::new(&dependency_graph.graph));
+
+        assert!(true);
     }
 
     #[test]

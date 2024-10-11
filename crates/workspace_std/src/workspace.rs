@@ -9,6 +9,7 @@ use wax::{CandidatePath, Glob, Pattern};
 
 use crate::{
     config::{get_workspace_config, WorkspaceConfig},
+    git::Repository,
     manager::CorePackageManager,
     package::{Dependency, Package, PackageInfo, PackageJson},
 };
@@ -54,6 +55,37 @@ impl Workspace {
             CorePackageManager::Bun => todo!("Bun is not yet supported"),
             CorePackageManager::Pnpm => self.get_packages_from_pnpm(),
         }
+    }
+
+    pub fn get_package_info(&self, package_name: &str) -> Option<PackageInfo> {
+        let packages = self.get_packages();
+        packages.into_iter().find(|p| p.package.name == package_name.to_string())
+    }
+
+    pub fn get_changed_packages(&self, sha: Option<String>) -> Vec<PackageInfo> {
+        let packages = &self.get_packages();
+        let since = sha.unwrap_or(String::from("main"));
+        let packages_paths =
+            packages.into_iter().map(|pkg| pkg.package_path.to_string()).collect::<Vec<String>>();
+
+        let repo = Repository::new(&self.config.workspace_root.as_path());
+        let changed_files =
+            repo.get_all_files_changed_since_branch(&packages_paths, since.as_str());
+
+        packages
+            .iter()
+            .flat_map(|pkg| {
+                let mut pkgs = changed_files
+                    .iter()
+                    .filter(|file| file.starts_with(&pkg.package_path))
+                    .map(|_| pkg.to_owned())
+                    .collect::<Vec<PackageInfo>>();
+
+                pkgs.dedup_by(|a, b| a.package.name == b.package.name);
+
+                pkgs
+            })
+            .collect::<Vec<PackageInfo>>()
     }
 
     fn get_root_package_json(&self) -> PackageJson {
@@ -240,6 +272,7 @@ impl Workspace {
 
         pnpm_info
             .iter()
+            .filter(|pkgs| pkgs.path != path.display().to_string())
             .map(|pkgs| {
                 let package_path = PathBuf::from(pkgs.path.clone());
                 let package_json_path = package_path.join("package.json");
@@ -297,6 +330,22 @@ mod tests {
     }
 
     #[test]
+    fn test_get_yarn_packages() -> Result<(), std::io::Error> {
+        let monorepo = MonorepoWorkspace::new();
+        let root = monorepo.get_monorepo_root().clone();
+        monorepo.create_workspace(&CorePackageManager::Yarn)?;
+
+        let workspace = Workspace::new(root);
+        let packages = workspace.get_packages();
+
+        assert_eq!(packages.len(), 6);
+
+        monorepo.delete_repository();
+
+        Ok(())
+    }
+
+    #[test]
     fn test_get_pnpm_packages() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
         let root = monorepo.get_monorepo_root().clone();
@@ -304,8 +353,8 @@ mod tests {
 
         let workspace = Workspace::new(root);
         let packages = workspace.get_packages();
-        dbg!(&packages);
-        assert_eq!(packages.len(), 7);
+
+        assert_eq!(packages.len(), 6);
 
         monorepo.delete_repository();
 

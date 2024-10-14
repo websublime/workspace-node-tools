@@ -182,6 +182,16 @@ impl Repository {
         execute_git(&self.location, ["status", "--porcelain"], |stdout, _| Ok(!stdout.is_empty()))
     }
 
+    pub fn status(&self) -> GitResult<Option<String>> {
+        execute_git(&self.location, ["status", "--porcelain"], |stdout, _| {
+            if stdout.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(stdout.to_string()))
+            }
+        })
+    }
+
     pub fn get_current_branch(&self) -> GitResult<Option<String>> {
         execute_git(&self.location, ["rev-parse", "--abbrev-ref", "HEAD"], |stdout, _| {
             if stdout.is_empty() {

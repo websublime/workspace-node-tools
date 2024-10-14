@@ -372,9 +372,13 @@ mod tests {
         let root = monorepo.get_monorepo_root().clone();
         let js_path = root.join("packages/package-foo/index.mjs");
         monorepo.create_workspace(&CorePackageManager::Pnpm)?;
-
         let workspace = Workspace::new(root.clone());
         let repo = Repository::new(root.as_path());
+
+        #[cfg(windows)]
+        let status = repo.status();
+        #[cfg(windows)]
+        dbg!(status);
 
         let _ = repo.create_branch("feat/message");
 

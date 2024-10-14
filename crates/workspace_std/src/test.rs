@@ -758,3 +758,21 @@ sort_commits = "newest"
         &self.root
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::print_stdout)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_repo() -> Result<(), std::io::Error> {
+        let monorepo = MonorepoWorkspace::new();
+        monorepo.create_workspace(&CorePackageManager::Npm)?;
+
+        let status = monorepo.repository.status().expect("Failed to get status");
+        println!("{:?}", status);
+
+        assert!(monorepo.get_monorepo_root().exists());
+        Ok(())
+    }
+}

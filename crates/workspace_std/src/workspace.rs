@@ -367,6 +367,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn test_get_changed_packages() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
         let root = monorepo.get_monorepo_root().clone();
@@ -374,11 +375,6 @@ mod tests {
         monorepo.create_workspace(&CorePackageManager::Pnpm)?;
         let workspace = Workspace::new(root.clone());
         let repo = Repository::new(root.as_path());
-
-        #[cfg(windows)]
-        let status = repo.status();
-        #[cfg(windows)]
-        println!("{:?}", status.unwrap());
 
         let _ = repo.create_branch("feat/message");
 

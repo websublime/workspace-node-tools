@@ -404,7 +404,12 @@ sort_commits = "newest"
         let monorepo_package_bar_json_writer = BufWriter::new(monorepo_package_bar_json_file);
         serde_json::to_writer_pretty(monorepo_package_bar_json_writer, &package_bar_json)?;
 
-        let mut js_file = File::create(js_path)?;
+        let mut js_file = OpenOptions::new()
+            .write(true)
+            .append(false)
+            .truncate(true)
+            .create(true)
+            .open(js_path.as_path())?;
         js_file.write_all(r#"export const bar = "hello bar";"#.as_bytes())?;
 
         self.repository.add_all().expect("Failed to add all files");

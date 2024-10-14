@@ -314,7 +314,7 @@ mod tests {
     use crate::git::Repository;
     use crate::manager::CorePackageManager;
     use crate::test::MonorepoWorkspace;
-    use std::fs::File;
+    use std::fs::OpenOptions;
     use std::io::Write;
     //use std::process::Command;
 
@@ -367,7 +367,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn test_get_changed_packages() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
         let root = monorepo.get_monorepo_root().clone();
@@ -378,7 +377,12 @@ mod tests {
 
         let _ = repo.create_branch("feat/message");
 
-        let mut js_file = File::create(&js_path)?;
+        let mut js_file = OpenOptions::new()
+            .write(true)
+            .append(false)
+            .truncate(true)
+            .create(true)
+            .open(js_path.as_path())?;
         js_file.write_all(r#"export const message = "hello";"#.as_bytes())?;
 
         let _ = repo.add_all();

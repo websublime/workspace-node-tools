@@ -59,16 +59,17 @@ impl Workspace {
 
     pub fn get_package_info(&self, package_name: &str) -> Option<PackageInfo> {
         let packages = self.get_packages();
-        packages.into_iter().find(|p| p.package.name == package_name.to_string())
+        packages.into_iter().find(|p| p.package.name == package_name)
     }
 
     pub fn get_changed_packages(&self, sha: Option<String>) -> Vec<PackageInfo> {
         let packages = &self.get_packages();
+        let root = &self.config.workspace_root.as_path();
         let since = sha.unwrap_or(String::from("main"));
         let packages_paths =
-            packages.into_iter().map(|pkg| pkg.package_path.to_string()).collect::<Vec<String>>();
+            packages.iter().map(|pkg| pkg.package_path.to_string()).collect::<Vec<String>>();
 
-        let repo = Repository::new(&self.config.workspace_root.as_path());
+        let repo = Repository::new(root);
         let changed_files =
             repo.get_all_files_changed_since_branch(&packages_paths, since.as_str());
 
@@ -312,6 +313,9 @@ mod tests {
     use super::*;
     use crate::manager::CorePackageManager;
     use crate::test::MonorepoWorkspace;
+    use std::fs::File;
+    use std::io::Write;
+    use std::process::Command;
 
     #[test]
     fn test_get_npm_packages() -> Result<(), std::io::Error> {
@@ -355,6 +359,59 @@ mod tests {
         let packages = workspace.get_packages();
 
         assert_eq!(packages.len(), 6);
+
+        monorepo.delete_repository();
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_changed_packages() -> Result<(), std::io::Error> {
+        let monorepo = MonorepoWorkspace::new();
+        let root = monorepo.get_monorepo_root().clone();
+        let js_path = root.join("packages/package-foo/index.mjs");
+        monorepo.create_workspace(&CorePackageManager::Pnpm)?;
+
+        let workspace = Workspace::new(root.clone());
+
+        let branch = Command::new("git")
+            .current_dir(&root)
+            .arg("checkout")
+            .arg("-b")
+            .arg("feat/message")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git branch problem");
+
+        branch.wait_with_output()?;
+
+        let mut js_file = File::create(&js_path)?;
+        js_file.write_all(r#"export const message = "hello";"#.as_bytes())?;
+
+        let add = Command::new("git")
+            .current_dir(&root)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git add problem");
+
+        add.wait_with_output()?;
+
+        let commit = Command::new("git")
+            .current_dir(&root)
+            .arg("commit")
+            .arg("-m")
+            .arg("feat: message to the world")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Git commit problem");
+
+        commit.wait_with_output()?;
+
+        let packages = workspace.get_changed_packages(Some("main".to_string()));
+
+        assert_eq!(packages.len(), 1);
 
         monorepo.delete_repository();
 

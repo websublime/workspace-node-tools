@@ -280,8 +280,6 @@ mod tests {
         let dependency_graph = DependencyGraph::from(&build[..]);
 
         println!("{}", Dot::new(&dependency_graph.graph));
-
-        assert!(true);
     }
 
     #[test]

@@ -357,6 +357,7 @@ impl Repository {
         local: Option<bool>,
     ) -> GitResult<Vec<RepositoryRemoteTags>> {
         let mut args = vec![];
+        let regex = Regex::new(r"\s+").expect("Failed to create regex");
 
         match local {
             Some(true) => {
@@ -385,7 +386,7 @@ impl Repository {
                 .split(LINE_ENDING)
                 .filter(|tags| !tags.trim().is_empty())
                 .map(|tags| {
-                    let hash_tags = Regex::new(r"\s+").unwrap().split(tags).collect::<Vec<&str>>();
+                    let hash_tags = regex.split(tags).collect::<Vec<&str>>();
 
                     RepositoryRemoteTags {
                         hash: hash_tags[0].to_string(),

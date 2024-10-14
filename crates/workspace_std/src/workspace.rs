@@ -311,11 +311,12 @@ impl Workspace {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::git::Repository;
     use crate::manager::CorePackageManager;
     use crate::test::MonorepoWorkspace;
     use std::fs::File;
     use std::io::Write;
-    use std::process::Command;
+    //use std::process::Command;
 
     #[test]
     fn test_get_npm_packages() -> Result<(), std::io::Error> {
@@ -373,41 +374,15 @@ mod tests {
         monorepo.create_workspace(&CorePackageManager::Pnpm)?;
 
         let workspace = Workspace::new(root.clone());
+        let repo = Repository::new(root.as_path());
 
-        let branch = Command::new("git")
-            .current_dir(&root)
-            .arg("checkout")
-            .arg("-b")
-            .arg("feat/message")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Git branch problem");
-
-        branch.wait_with_output()?;
+        let _ = repo.create_branch("feat/message");
 
         let mut js_file = File::create(&js_path)?;
         js_file.write_all(r#"export const message = "hello";"#.as_bytes())?;
 
-        let add = Command::new("git")
-            .current_dir(&root)
-            .arg("add")
-            .arg(".")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Git add problem");
-
-        add.wait_with_output()?;
-
-        let commit = Command::new("git")
-            .current_dir(&root)
-            .arg("commit")
-            .arg("-m")
-            .arg("feat: message to the world")
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Git commit problem");
-
-        commit.wait_with_output()?;
+        let _ = repo.add_all();
+        let _ = repo.commit("feat: message to the world", None, None);
 
         let packages = workspace.get_changed_packages(Some("main".to_string()));
 

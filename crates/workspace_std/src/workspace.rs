@@ -378,7 +378,7 @@ mod tests {
         #[cfg(windows)]
         let status = repo.status();
         #[cfg(windows)]
-        dbg!(status);
+        println!("{:?}", status.unwrap());
 
         let _ = repo.create_branch("feat/message");
 

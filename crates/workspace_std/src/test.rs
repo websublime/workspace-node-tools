@@ -761,13 +761,14 @@ sort_commits = "newest"
 
 #[cfg(test)]
 #[allow(clippy::print_stdout)]
+#[allow(clippy::uninlined_format_args)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_create_repo() -> Result<(), std::io::Error> {
+    fn test_create_repository() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
-        monorepo.create_workspace(&CorePackageManager::Npm)?;
+        monorepo.create_repository(&CorePackageManager::Npm)?;
 
         let status = monorepo.repository.status().expect("Failed to get status");
         println!("{:?}", status);

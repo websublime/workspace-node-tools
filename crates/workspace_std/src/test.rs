@@ -750,7 +750,6 @@ sort_commits = "newest"
 }
 
 #[cfg(test)]
-#[allow(clippy::print_stdout)]
 #[allow(clippy::uninlined_format_args)]
 mod tests {
     use super::*;
@@ -761,7 +760,8 @@ mod tests {
         monorepo.create_repository(&CorePackageManager::Npm)?;
 
         let status = monorepo.repository.status().expect("Failed to get status");
-        println!("{:?}", status);
+        dbg!(&status);
+        dbg!(&monorepo);
 
         assert!(monorepo.get_monorepo_root().exists());
         Ok(())

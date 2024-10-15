@@ -72,12 +72,7 @@ impl MonorepoWorkspace {
         }"#;
 
         let package_root_json = serde_json::from_str::<serde_json::Value>(monorepo_root_json)?;
-        let monorepo_package_root_json_file = OpenOptions::new()
-            .write(true)
-            .append(false)
-            .truncate(true)
-            .create(true)
-            .open(monorepo_package_json.as_path())?;
+        let monorepo_package_root_json_file = File::create(monorepo_package_json.as_path())?;
         let monorepo_root_json_writer = BufWriter::new(monorepo_package_root_json_file);
         serde_json::to_writer_pretty(monorepo_root_json_writer, &package_root_json)?;
 
@@ -190,12 +185,7 @@ topo_order = false
 sort_commits = "newest"
         "#;
 
-        let mut monorepo_package_config_toml_file = OpenOptions::new()
-            .write(true)
-            .append(false)
-            .truncate(true)
-            .create(true)
-            .open(monorepo_config_toml.as_path())?;
+        let mut monorepo_package_config_toml_file = File::create(monorepo_config_toml.as_path())?;
         monorepo_package_config_toml_file.write_all(monorepo_config_data.as_bytes())?;
 
         match package_manager {

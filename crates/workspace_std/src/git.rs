@@ -262,7 +262,9 @@ impl Repository {
         }
 
         let temp_dir = temp_dir();
-        let temp_file_path = temp_dir.join("commit_message.txt");
+        let canonic_path =
+            &std::fs::canonicalize(Path::new(temp_dir.as_os_str())).expect("Invalid path");
+        let temp_file_path = canonic_path.join("commit_message.txt");
 
         let mut file = File::create(&temp_file_path).expect("Failed to creat commit file");
         file.write_all(message.as_bytes()).expect("Failed to write commit message");

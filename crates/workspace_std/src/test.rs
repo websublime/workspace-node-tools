@@ -222,8 +222,9 @@ sort_commits = "newest"
         self.repository
             .init("main", "Websublime Machine", "machine@websublime.com")
             .expect("Failed to initialize git repository");
-        dbg!(self.repository.status().expect("Should print git status"));
+        dbg!(self.repository.status().expect("Should print unstaged files"));
         self.repository.add_all().expect("Failed to add all files");
+        dbg!(self.repository.status().expect("Should print staged files"));
         self.repository
             .commit("chore: init monorepo workspace", None, None)
             .expect("Failed to commit changes");

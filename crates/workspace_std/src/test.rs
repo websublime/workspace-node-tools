@@ -219,11 +219,10 @@ sort_commits = "newest"
             }
         }
 
-        dbg!(self.repository.status().expect("Should print git status"));
-
         self.repository
             .init("main", "Websublime Machine", "machine@websublime.com")
             .expect("Failed to initialize git repository");
+        dbg!(self.repository.status().expect("Should print git status"));
         self.repository.add_all().expect("Failed to add all files");
         self.repository
             .commit("chore: init monorepo workspace", None, None)

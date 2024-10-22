@@ -533,7 +533,11 @@ where
     S: AsRef<OsStr>,
     F: Fn(&str, &Output) -> GitResult<R>,
 {
-    let output = Command::new("git").current_dir(path).args(args).output();
+    let output = Command::new("git")
+        .current_dir(path)
+        .stdout(std::process::Stdio::piped())
+        .args(args)
+        .output();
 
     output.map_err(|_| GitError::Execution).and_then(|output| {
         if output.status.success() {

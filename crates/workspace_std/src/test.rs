@@ -736,7 +736,6 @@ sort_commits = "newest"
     ) -> Result<(), std::io::Error> {
         self.create_repository(package_manager)?;
         self.create_changes()?;
-        dbg!(self.repository.log().expect("Failed to get log"));
         self.create_package_bar()?;
         self.create_package_foo()?;
         self.create_package_baz()?;
@@ -765,21 +764,20 @@ mod tests {
         let monorepo = MonorepoWorkspace::new();
         monorepo.create_repository(&CorePackageManager::Npm)?;
 
-        assert!(monorepo.get_monorepo_root().exists());
-        Ok(())
-    }
-
-    #[test]
-    fn test_create_workspace() -> Result<(), std::io::Error> {
-        let monorepo = MonorepoWorkspace::new();
-        monorepo.create_workspace(&CorePackageManager::Npm)?;
-
         let status = monorepo.repository.status().expect("Failed to get status");
         let uncleaned = monorepo.repository.is_workdir_unclean().expect("Workdir is not clean");
+        let log = monorepo.repository.log().expect("Failed to get log");
+        let local = monorepo.repository.list_config("local").expect("Failed to get local config");
         dbg!(&status);
         dbg!(&uncleaned);
+        dbg!(&log);
+        dbg!(&local);
+        dbg!(&monorepo.root);
 
         assert!(monorepo.get_monorepo_root().exists());
+
+        monorepo.delete_repository();
+
         Ok(())
     }
 }

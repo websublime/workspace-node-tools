@@ -104,6 +104,14 @@ impl Repository {
         })
     }
 
+    pub fn list_config(&self, config_type: &str) -> GitResult<String> {
+        execute_git(
+            &self.location,
+            ["--no-pager", "config", "list", format!("--{config_type}").as_str()],
+            |stdout, _| Ok(stdout.to_string()),
+        )
+    }
+
     pub fn create_branch(&self, branch_name: &str) -> GitResult<bool> {
         execute_git(&self.location, ["checkout", "-b", branch_name], |_, output| {
             Ok(output.status.success())
@@ -270,14 +278,9 @@ impl Repository {
 
         let temp_dir = temp_dir();
 
-        #[cfg(not(windows))]
         let canonic_path =
             &std::fs::canonicalize(Path::new(temp_dir.as_os_str())).expect("Invalid path");
-        #[cfg(not(windows))]
         let temp_file_path = canonic_path.join("commit_message.txt");
-
-        #[cfg(windows)]
-        let temp_file_path = temp_dir.join("commit_message.txt");
 
         let mut file = File::create(temp_file_path.as_path()).expect("Failed to creat commit file");
         file.write_all(message.as_bytes()).expect("Failed to write commit message");

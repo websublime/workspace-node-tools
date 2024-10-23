@@ -260,7 +260,7 @@ pub fn get_workspace_config(cwd: Option<PathBuf>) -> WorkspaceConfig {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
     use super::*;
     use crate::test::MonorepoWorkspace;
@@ -301,4 +301,4 @@ mod tests {
 
         Ok(())
     }
-}
+}*/

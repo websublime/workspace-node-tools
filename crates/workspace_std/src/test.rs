@@ -772,4 +772,18 @@ mod tests {
         assert!(monorepo.get_monorepo_root().exists());
         Ok(())
     }
+
+    #[test]
+    fn test_create_workspace() -> Result<(), std::io::Error> {
+        let monorepo = MonorepoWorkspace::new();
+        monorepo.create_workspace(&CorePackageManager::Npm)?;
+
+        let status = monorepo.repository.status().expect("Failed to get status");
+        let cleaned = monorepo.repository.is_workdir_unclean().expect("Workdir is not clean");
+        dbg!(&status);
+        dbg!(&cleaned);
+
+        assert!(monorepo.get_monorepo_root().exists());
+        Ok(())
+    }
 }

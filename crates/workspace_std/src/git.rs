@@ -551,11 +551,11 @@ where
 {
     let output = Command::new("git")
         .current_dir(path)
-        .stdout(std::process::Stdio::piped())
         .args(args)
-        .output();
+        .spawn()
+        .expect("Failed to execute git command");
 
-    output.map_err(|_| GitError::Execution).and_then(|output| {
+    output.wait_with_output().map_err(|_| GitError::Execution).and_then(|output| {
         if output.status.success() {
             if let Ok(message) = str::from_utf8(&output.stdout) {
                 process(strip_trailing_newline(&message.to_string()).as_str(), &output)

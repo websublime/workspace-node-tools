@@ -322,7 +322,7 @@ mod tests {
     use crate::git::Repository;
     use crate::manager::CorePackageManager;
     use crate::test::MonorepoWorkspace;
-    use std::fs::OpenOptions;
+    use std::fs::File;
     use std::io::Write;
     //use std::process::Command;
 
@@ -383,18 +383,13 @@ mod tests {
         let workspace = Workspace::new(root.clone());
         let repo = Repository::new(root.as_path());
 
-        let _ = repo.create_branch("feat/message");
+        let _ = repo.create_branch("feat/message").expect("Failed to create branch");
 
-        let mut js_file = OpenOptions::new()
-            .write(true)
-            .append(false)
-            .truncate(true)
-            .create(true)
-            .open(js_path.as_path())?;
+        let mut js_file = File::create(js_path.as_path()).expect("Failed to create main.js file");
         js_file.write_all(r#"export const message = "hello";"#.as_bytes())?;
 
-        let _ = repo.add_all();
-        let _ = repo.commit("feat: message to the world", None, None);
+        let _ = repo.add_all().expect("Failed to add files");
+        let _ = repo.commit("feat: message to the world", None, None).expect("Failed to commit");
 
         let packages = workspace.get_changed_packages(Some("main".to_string()));
 

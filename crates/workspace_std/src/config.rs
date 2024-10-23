@@ -284,11 +284,14 @@ mod tests {
     #[test]
     fn test_get_default_workspace_config() -> Result<(), std::io::Error> {
         let current_dir = PathBuf::from(".");
+
         #[cfg(not(windows))]
         let root = &std::fs::canonicalize(Path::new(current_dir.as_os_str()))?;
+
         #[cfg(windows)]
         let root = Path::new(current_dir.as_os_str());
-        let config = get_workspace_config(Some(current_dir));
+
+        let config = get_workspace_config(Some(current_dir.clone()));
 
         assert_ne!(config.workspace_root, root.clone());
 

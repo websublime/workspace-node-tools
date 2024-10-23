@@ -269,10 +269,13 @@ impl Repository {
         }
 
         let temp_dir = temp_dir();
+
+        #[cfg(not(windows))]
         let canonic_path =
             &std::fs::canonicalize(Path::new(temp_dir.as_os_str())).expect("Invalid path");
         #[cfg(not(windows))]
         let temp_file_path = canonic_path.join("commit_message.txt");
+
         #[cfg(windows)]
         let temp_file_path = temp_dir.join("commit_message.txt");
 

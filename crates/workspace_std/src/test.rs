@@ -8,8 +8,12 @@ use crate::manager::CorePackageManager;
 use std::{
     env::temp_dir,
     fs::{create_dir_all, remove_dir_all, File, OpenOptions},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
+
+#[cfg(test)]
+#[cfg(not(windows))]
+use std::path::Path;
 
 #[cfg(test)]
 use std::io::{BufWriter, Write};

@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::process::{Command, Stdio};
-use std::{
-    fs::{canonicalize, File},
-    io::BufReader,
-    path::{Path, PathBuf},
-};
+use std::{fs::File, io::BufReader, path::PathBuf};
 use wax::{CandidatePath, Glob, Pattern};
+
+#[cfg(not(windows))]
+use std::path::Path;
+
+#[cfg(not(windows))]
+use std::fs::canonicalize;
 
 use crate::{
     config::{get_workspace_config, WorkspaceConfig},

@@ -378,7 +378,7 @@ mod tests {
     fn test_get_changed_packages() -> Result<(), std::io::Error> {
         let monorepo = MonorepoWorkspace::new();
         let root = monorepo.get_monorepo_root().clone();
-        let js_path = root.join("packages/package-foo/index.mjs");
+        let js_path = root.join("packages/package-foo/main.mjs");
         monorepo.create_workspace(&CorePackageManager::Pnpm)?;
         let workspace = Workspace::new(root.clone());
         let repo = Repository::new(root.as_path());

@@ -27,8 +27,13 @@ pub fn get_project_root_path(root: Option<PathBuf>) -> Option<String> {
         }
     };
 
+    #[cfg(not(windows))]
     let canonic_path = &std::fs::canonicalize(Path::new(&project_root)).unwrap();
+    #[cfg(not(windows))]
     let root = canonic_path.as_path().display().to_string();
+
+    #[cfg(windows)]
+    let root = project_root;
 
     Some(root)
 }

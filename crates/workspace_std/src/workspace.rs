@@ -29,7 +29,13 @@ pub struct Workspace {
 impl From<&str> for Workspace {
     fn from(root: &str) -> Self {
         let path_buff = PathBuf::from(root);
+
+        #[cfg(not(windows))]
         let canonic_path = canonicalize(Path::new(path_buff.as_os_str())).expect("Invalid path");
+
+        #[cfg(windows)]
+        let canonic_path = path_buff;
+
         let config = get_workspace_config(Some(canonic_path));
         Workspace { config }
     }

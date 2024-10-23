@@ -42,18 +42,25 @@ pub struct RepositoryRemoteTags {
 
 impl From<&PathBuf> for Repository {
     fn from(root: &PathBuf) -> Self {
-        let canonic_path =
-            &std::fs::canonicalize(Path::new(root.as_os_str())).expect("Invalid path");
-        Repository { location: canonic_path.clone() }
+        #[cfg(not(windows))]
+        let repo_path = &std::fs::canonicalize(Path::new(root.as_os_str())).expect("Invalid path");
+        #[cfg(windows)]
+        let repo_path = root;
+
+        Repository { location: repo_path.clone() }
     }
 }
 
 impl From<&str> for Repository {
     fn from(root: &str) -> Self {
         let path_buff = PathBuf::from(root);
-        let canonic_path =
+        #[cfg(not(windows))]
+        let repo_path =
             &std::fs::canonicalize(Path::new(path_buff.as_os_str())).expect("Invalid path");
-        Repository { location: canonic_path.clone() }
+        #[cfg(windows)]
+        let repo_path = &path_buff;
+
+        Repository { location: repo_path.clone() }
     }
 }
 
@@ -262,9 +269,11 @@ impl Repository {
         }
 
         let temp_dir = temp_dir();
-        //let canonic_path =
-        //    &std::fs::canonicalize(Path::new(temp_dir.as_os_str())).expect("Invalid path");
-        //let temp_file_path = canonic_path.join("commit_message.txt");
+        let canonic_path =
+            &std::fs::canonicalize(Path::new(temp_dir.as_os_str())).expect("Invalid path");
+        #[cfg(not(windows))]
+        let temp_file_path = canonic_path.join("commit_message.txt");
+        #[cfg(windows)]
         let temp_file_path = temp_dir.join("commit_message.txt");
 
         let mut file = File::create(temp_file_path.as_path()).expect("Failed to creat commit file");

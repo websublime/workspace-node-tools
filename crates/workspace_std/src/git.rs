@@ -42,10 +42,7 @@ pub struct RepositoryRemoteTags {
 
 impl From<&PathBuf> for Repository {
     fn from(root: &PathBuf) -> Self {
-        #[cfg(not(windows))]
         let repo_path = &std::fs::canonicalize(Path::new(root.as_os_str())).expect("Invalid path");
-        #[cfg(windows)]
-        let repo_path = root;
 
         Repository { location: repo_path.clone() }
     }
@@ -54,11 +51,8 @@ impl From<&PathBuf> for Repository {
 impl From<&str> for Repository {
     fn from(root: &str) -> Self {
         let path_buff = PathBuf::from(root);
-        #[cfg(not(windows))]
         let repo_path =
             &std::fs::canonicalize(Path::new(path_buff.as_os_str())).expect("Invalid path");
-        #[cfg(windows)]
-        let repo_path = &path_buff;
 
         Repository { location: repo_path.clone() }
     }
@@ -102,6 +96,12 @@ impl Repository {
             });
 
         Ok(user_config.is_ok() && email_config.is_ok())
+    }
+
+    pub fn log(&self) -> GitResult<String> {
+        execute_git(&self.location, ["--no-pager", "log", "main..HEAD"], |stdout, _| {
+            Ok(stdout.trim().to_string())
+        })
     }
 
     pub fn create_branch(&self, branch_name: &str) -> GitResult<bool> {

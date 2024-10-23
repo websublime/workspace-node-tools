@@ -293,7 +293,11 @@ mod tests {
 
         let config = get_workspace_config(Some(current_dir.clone()));
 
+        #[cfg(not(windows))]
         assert_ne!(config.workspace_root, root.clone());
+
+        #[cfg(windows)]
+        assert_eq!(config.workspace_root, root);
 
         Ok(())
     }

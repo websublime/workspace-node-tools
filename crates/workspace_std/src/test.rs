@@ -230,9 +230,7 @@ sort_commits = "newest"
         self.repository
             .init("main", "Websublime Machine", "machine@websublime.com")
             .expect("Failed to initialize git repository");
-        dbg!(self.repository.status().expect("Should print unstaged files"));
         self.repository.add_all().expect("Failed to add all files");
-        dbg!(self.repository.status().expect("Should print staged files"));
         self.repository
             .commit("chore: init monorepo workspace", None, None)
             .expect("Failed to commit changes");
@@ -404,13 +402,10 @@ sort_commits = "newest"
         let monorepo_package_bar_json_writer = BufWriter::new(monorepo_package_bar_json_file);
         serde_json::to_writer_pretty(monorepo_package_bar_json_writer, &package_bar_json)?;
 
-        let mut js_file = OpenOptions::new()
-            .write(true)
-            .append(false)
-            .truncate(true)
-            .create(true)
-            .open(js_path.as_path())?;
-        js_file.write_all(r#"export const bar = "hello bar";"#.as_bytes())?;
+        let mut js_file = File::create(js_path.as_path()).expect("Failed to create index file");
+        js_file
+            .write_all(r#"export const bar = "hello bar";"#.as_bytes())
+            .expect("Failed to write to file");
 
         self.repository.add_all().expect("Failed to add all files");
         self.repository
@@ -770,8 +765,9 @@ mod tests {
         monorepo.create_repository(&CorePackageManager::Npm)?;
 
         let status = monorepo.repository.status().expect("Failed to get status");
+        let cleaned = monorepo.repository.is_workdir_unclean().expect("Workdir is not clean");
         dbg!(&status);
-        dbg!(&monorepo);
+        dbg!(&cleaned);
 
         assert!(monorepo.get_monorepo_root().exists());
         Ok(())
